@@ -17,9 +17,6 @@ export default function MobileNav() {
   // Hide nav on auth pages
   if (pathname === "/login" || pathname === "/register") return null;
 
-  // Show back button when not on main tabs
-  const showBack = !["/dashboard", "/account"].includes(pathname);
-
   const getActiveHref = () => {
     if (pathname.startsWith("/account")) return "/account";
     return "/dashboard";
@@ -29,35 +26,29 @@ export default function MobileNav() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-5 sm:hidden">
       {/* Blur backdrop extension */}
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[var(--color-canvas)] to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black to-transparent pointer-events-none" />
 
       <nav
         style={{
-          background: "rgba(22,22,20,0.92)",
-          backdropFilter: "blur(32px)",
-          WebkitBackdropFilter: "blur(32px)",
-          boxShadow: `
-            inset 0 1px 0 rgba(255,255,240,0.07),
-            0 0 0 1px rgba(255,255,240,0.06),
-            0 8px 40px rgba(0,0,0,0.5),
-            0 2px 8px rgba(0,0,0,0.4)
-          `,
+          background: "rgba(0,0,0,0.85)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 8px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.5)",
         }}
         className="relative mx-auto flex max-w-xs items-center justify-around rounded-[28px] px-2 py-2"
       >
-        {/* Back button */}
-        {showBack && (
-          <button
-            onClick={() => router.back()}
-            className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px]"
-          >
-            <ArrowLeft
-              size={20}
-              strokeWidth={2}
-              style={{ color: "var(--color-subtle)" }}
-            />
-          </button>
-        )}
+        {/* Back button – always visible on the left */}
+        <button
+          onClick={() => router.back()}
+          className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px]"
+          aria-label="Zurück"
+        >
+          <ArrowLeft
+            size={20}
+            strokeWidth={2}
+            style={{ color: "rgba(255,255,255,0.45)" }}
+          />
+        </button>
 
         {navItems.map((item) => {
           const isActive = activeHref === item.href;
@@ -78,7 +69,7 @@ export default function MobileNav() {
                     exit={{ opacity: 0, scale: 0.85 }}
                     transition={{ type: "spring", stiffness: 500, damping: 35 }}
                     className="absolute inset-0 z-0 rounded-[22px]"
-                    style={{ background: "rgba(90,171,126,0.12)", border: "1px solid rgba(90,171,126,0.18)" }}
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
                   />
                 )}
               </AnimatePresence>
@@ -94,13 +85,13 @@ export default function MobileNav() {
                   <Icon
                     size={20}
                     strokeWidth={isActive ? 2.5 : 1.8}
-                    style={{ color: isActive ? "var(--color-brand)" : "var(--color-subtle)" }}
+                    style={{ color: isActive ? "#ffffff" : "rgba(255,255,255,0.35)" }}
                   />
                 </motion.span>
                 <motion.span
                   animate={{ opacity: isActive ? 1 : 0.6 }}
                   className="text-[9px] font-bold uppercase tracking-[0.12em]"
-                  style={{ color: isActive ? "var(--color-brand)" : "var(--color-subtle)" }}
+                  style={{ color: isActive ? "#ffffff" : "rgba(255,255,255,0.35)" }}
                 >
                   {item.label}
                 </motion.span>
