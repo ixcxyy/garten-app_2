@@ -38,6 +38,8 @@ type DashboardGroup = {
   memberCount: number;
   pendingTodos: number;
   completedTodos: number;
+  pendingDueTodos: number;
+  completedDueTodos: number;
   role: "owner" | "member";
 };
 
@@ -63,6 +65,8 @@ const MOCK_GROUPS: DashboardGroup[] = [
     memberCount: 12,
     pendingTodos: 4,
     completedTodos: 8,
+    pendingDueTodos: 2,
+    completedDueTodos: 4,
     role: "owner",
   },
   {
@@ -73,6 +77,8 @@ const MOCK_GROUPS: DashboardGroup[] = [
     memberCount: 8,
     pendingTodos: 2,
     completedTodos: 5,
+    pendingDueTodos: 1,
+    completedDueTodos: 3,
     role: "member",
   },
   {
@@ -83,6 +89,8 @@ const MOCK_GROUPS: DashboardGroup[] = [
     memberCount: 25,
     pendingTodos: 7,
     completedTodos: 12,
+    pendingDueTodos: 3,
+    completedDueTodos: 6,
     role: "member",
   },
 ];
@@ -93,6 +101,8 @@ function GroupCard({
   memberCount,
   pendingTodos = 0,
   completedTodos = 0,
+  pendingDueTodos = 0,
+  completedDueTodos = 0,
   role = "member",
   onClick,
   index = 0,
@@ -102,13 +112,15 @@ function GroupCard({
   memberCount: number;
   pendingTodos?: number;
   completedTodos?: number;
+  pendingDueTodos?: number;
+  completedDueTodos?: number;
   role?: "owner" | "member";
   onClick?: () => void;
   index?: number;
 }) {
   const initial = name.charAt(0).toUpperCase();
-  const total = pendingTodos + completedTodos;
-  const progress = total > 0 ? Math.round((completedTodos / total) * 100) : 0;
+  const totalDue = pendingDueTodos + completedDueTodos;
+  const progress = totalDue > 0 ? Math.round((completedDueTodos / totalDue) * 100) : 0;
 
   return (
     <motion.button
@@ -316,6 +328,8 @@ function DashboardContent() {
               memberCount: 1,
               pendingTodos: 0,
               completedTodos: 0,
+              pendingDueTodos: 0,
+              completedDueTodos: 0,
               role: membership.role === "owner" ? "owner" : "member",
             } satisfies DashboardGroup;
           })
@@ -327,31 +341,41 @@ function DashboardContent() {
         }
 
         const groupIds = normalizedGroups.map((g) => g.id);
-        const [{ data: memberRows }, { data: pendingRows }, { data: doneRows }] =
+        const [{ data: memberRows }, { data: todoRows }] =
           await Promise.all([
             supabase.from("group_members").select("group_id").in("group_id", groupIds),
             supabase
               .from("todos")
-              .select("group_id")
-              .in("group_id", groupIds)
-              .eq("status", "pending"),
-            supabase
-              .from("todos")
-              .select("group_id")
-              .in("group_id", groupIds)
-              .eq("status", "completed"),
+              .select("group_id, status, due_date")
+              .in("group_id", groupIds),
           ]);
 
         const memberCounts = (memberRows ?? []).reduce<Record<string, number>>((acc, row) => {
           acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
           return acc;
         }, {});
-        const pendingCounts = (pendingRows ?? []).reduce<Record<string, number>>((acc, row) => {
-          acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
+        const pendingCounts = (todoRows ?? []).reduce<Record<string, number>>((acc, row) => {
+          if (row.status === "pending") {
+            acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
+          }
           return acc;
         }, {});
-        const doneCounts = (doneRows ?? []).reduce<Record<string, number>>((acc, row) => {
-          acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
+        const doneCounts = (todoRows ?? []).reduce<Record<string, number>>((acc, row) => {
+          if (row.status === "completed") {
+            acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
+          }
+          return acc;
+        }, {});
+        const pendingDueCounts = (todoRows ?? []).reduce<Record<string, number>>((acc, row) => {
+          if (row.status === "pending" && row.due_date !== null) {
+            acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
+          }
+          return acc;
+        }, {});
+        const doneDueCounts = (todoRows ?? []).reduce<Record<string, number>>((acc, row) => {
+          if (row.status === "completed" && row.due_date !== null) {
+            acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
+          }
           return acc;
         }, {});
 
@@ -361,6 +385,8 @@ function DashboardContent() {
             memberCount: memberCounts[g.id] ?? 1,
             pendingTodos: pendingCounts[g.id] ?? 0,
             completedTodos: doneCounts[g.id] ?? 0,
+            pendingDueTodos: pendingDueCounts[g.id] ?? 0,
+            completedDueTodos: doneDueCounts[g.id] ?? 0,
           })),
         );
 
@@ -873,6 +899,8 @@ function DashboardContent() {
                   memberCount={group.memberCount}
                   pendingTodos={group.pendingTodos}
                   completedTodos={group.completedTodos}
+                  pendingDueTodos={group.pendingDueTodos}
+                  completedDueTodos={group.completedDueTodos}
                   role={group.role}
                   index={i}
                   onClick={() => router.push(`/group/${group.id}`)}

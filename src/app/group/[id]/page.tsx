@@ -298,7 +298,9 @@ function GroupPageContent() {
   const openTodos = todos.filter(t => t.status === 'pending');
   const doneTodos = todos.filter(t => t.status === 'completed');
   const displayedTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? (hideCompleted ? [] : doneTodos) : [];
-  const completionPct = todos.length > 0 ? Math.round((doneTodos.length / todos.length) * 100) : 0;
+  const dueTodos = todos.filter(t => t.due_date !== null);
+  const doneDueTodos = dueTodos.filter(t => t.status === 'completed');
+  const completionPct = dueTodos.length > 0 ? Math.round((doneDueTodos.length / dueTodos.length) * 100) : 0;
 
   return (
     <div className="min-h-screen pb-32 overflow-x-hidden" style={{ background: "var(--color-canvas)" }}>
