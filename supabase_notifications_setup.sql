@@ -26,13 +26,19 @@ CREATE EXTENSION IF NOT EXISTS "http" WITH SCHEMA "extensions";
 -- Function to trigger notification via Edge Function
 CREATE OR REPLACE FUNCTION public.handle_todo_notification()
 RETURNS TRIGGER AS $$
+DECLARE
+  service_role_key TEXT := 'YOUR_SERVICE_ROLE_KEY'; -- REPLACE THIS WITH YOUR ACTUAL SERVICE ROLE KEY
+  project_id TEXT := 'oesmmhuiygrrgwvdgymj'; -- Your project ID
 BEGIN
   -- We only care about INSERT or status updates to 'completed'
   IF (TG_OP = 'INSERT') OR (TG_OP = 'UPDATE' AND OLD.status = 'pending' AND NEW.status = 'completed') THEN
     PERFORM
       extensions.http_post(
-        url := 'https://' ||'oesmmhuiygrrgwvdgymj' || '.supabase.co/functions/v1/push-notifications',
-        headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}'::jsonb,
+        url := 'https://' || project_id || '.supabase.co/functions/v1/push-notifications',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || service_role_key
+        ),
         payload := jsonb_build_object(
           'record', row_to_json(NEW),
           'old_record', CASE WHEN TG_OP = 'UPDATE' THEN row_to_json(OLD) ELSE NULL END,

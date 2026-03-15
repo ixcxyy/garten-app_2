@@ -16,9 +16,16 @@ webpush.setVapidDetails(
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 serve(async (req) => {
+  // Handle CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*' } });
+  }
+
   try {
     const payload = await req.json();
-    const { record, table, type, old_record } = payload;
+    console.log('Received push trigger:', payload);
+
+    const { record, table, type, old_record, reminder_type } = payload;
 
     let notificationTitle = "Garden Groups";
     let notificationBody = "Neue Aktivität";
@@ -26,7 +33,16 @@ serve(async (req) => {
     let groupId = "";
     let actorId = "";
 
-    if (table === "todos") {
+    if (type === 'REMINDER') {
+      notificationTitle = "🌱 Garten-Erinnerung";
+      notificationBody = reminder_type === '1d' 
+        ? "Du hast Aufgaben, die morgen fällig sind!" 
+        : "Vergiss nicht deine anstehenden Aufgaben.";
+      
+      // For reminders, we might notify ALL users with active subscriptions
+      // or we could pass specific userIds in the payload.
+      // For now, let's assume global reminder if no userIds provided.
+    } else if (table === "todos") {
       groupId = record.group_id;
       actorId = record.creator_id;
       targetUrl = `/group/${groupId}`;
@@ -34,7 +50,7 @@ serve(async (req) => {
       if (type === "INSERT") {
         notificationTitle = "🌱 Neue Aufgabe";
         notificationBody = record.title;
-      } else if (type === "UPDATE" && old_record.status === "pending" && record.status === "completed") {
+      } else if (type === "UPDATE" && old_record?.status === "pending" && record.status === "completed") {
         notificationTitle = "✅ Aufgabe erledigt";
         notificationBody = `"${record.title}" wurde abgeschlossen!`;
       } else {
@@ -42,17 +58,29 @@ serve(async (req) => {
       }
     }
 
-    // Get all members of the group except the actor
-    const { data: members, error: membersError } = await supabase
-      .from("group_members")
-      .select("user_id")
-      .eq("group_id", groupId)
-      .neq("user_id", actorId);
+    // Identify recipients
+    let userIds: string[] = [];
+    if (type === 'REMINDER') {
+      // Get all users who have a subscription
+      const { data: allSubscribers } = await supabase
+        .from("push_subscriptions")
+        .select("user_id");
+      userIds = [...new Set((allSubscribers || []).map(s => s.user_id))];
+    } else {
+      // Get group members except the actor
+      const { data: members, error: membersError } = await supabase
+        .from("group_members")
+        .select("user_id")
+        .eq("group_id", groupId)
+        .neq("user_id", actorId);
+      if (membersError) throw membersError;
+      userIds = members.map((m) => m.user_id);
+    }
 
-    if (membersError) throw membersError;
-
-    const userIds = members.map((m) => m.user_id);
-    if (userIds.length === 0) return new Response(JSON.stringify({ message: "No other members to notify" }), { status: 200 });
+    if (userIds.length === 0) {
+      console.log('No recipients found.');
+      return new Response(JSON.stringify({ message: "No recipients to notify" }), { status: 200 });
+    }
 
     // Get push subscriptions for these users
     const { data: subscriptions, error: subError } = await supabase
@@ -61,6 +89,7 @@ serve(async (req) => {
       .in("user_id", userIds);
 
     if (subError) throw subError;
+    console.log(`Sending to ${subscriptions.length} subscriptions for ${userIds.length} users.`);
 
     const results = await Promise.allSettled(
       subscriptions.map((sub) => {
@@ -76,7 +105,7 @@ serve(async (req) => {
           title: notificationTitle,
           body: notificationBody,
           url: targetUrl,
-          tag: `todo-${groupId}`,
+          tag: groupId ? `todo-${groupId}` : 'reminder',
         });
 
         return webpush.sendNotification(pushSubscription, pushPayload);
@@ -85,10 +114,19 @@ serve(async (req) => {
 
     // Filter out expired subscriptions
     const expiredSubIds = results
-      .map((res, i) => (res.status === "rejected" && (res.reason.statusCode === 410 || res.reason.statusCode === 404) ? subscriptions[i].id : null))
+      .map((res, i) => {
+        if (res.status === "rejected") {
+          console.error('Push failed for subscription:', subscriptions[i].user_id, res.reason);
+          if (res.reason.statusCode === 410 || res.reason.statusCode === 404) {
+            return subscriptions[i].id;
+          }
+        }
+        return null;
+      })
       .filter(Boolean);
 
     if (expiredSubIds.length > 0) {
+      console.log(`Removing ${expiredSubIds.length} expired subscriptions.`);
       await supabase.from("push_subscriptions").delete().in("id", expiredSubIds);
     }
 
@@ -97,6 +135,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
+    console.error('Edge Function Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { "Content-Type": "application/json" },
       status: 500,
