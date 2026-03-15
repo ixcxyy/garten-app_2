@@ -21,6 +21,11 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
   const [dueDate, setDueDate] = useState('');
   const [showPhotoSection, setShowPhotoSection] = useState(false);
 
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;

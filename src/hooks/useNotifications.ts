@@ -179,6 +179,11 @@ export function useNotifications(groupId?: string, currentUserId?: string) {
     try {
       if (!currentUserId || typeof window === 'undefined') return;
       
+      if (!VAPID_PUBLIC_KEY) {
+        console.warn('Push subscription blocked: NEXT_PUBLIC_VAPID_PUBLIC_KEY is missing.');
+        return;
+      }
+      
       const sw = await navigator.serviceWorker.ready;
       const sub = await sw.pushManager.subscribe({
         userVisibleOnly: true,

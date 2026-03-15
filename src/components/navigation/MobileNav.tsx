@@ -17,14 +17,23 @@ export default function MobileNav() {
   const [isHidden, setIsHidden] = React.useState(false);
 
   React.useEffect(() => {
-    // Listen for modal open/close events or check body class
-    const observer = new MutationObserver(() => {
+    const checkModal = () => {
       const isModalOpen = document.body.style.overflow === 'hidden' || 
-                         document.querySelector('[data-modal-open="true"]');
-      setIsHidden(!!isModalOpen);
-    });
+                         !!document.querySelector('[data-modal-open="true"]');
+      setIsHidden(isModalOpen);
+    };
 
-    observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+    // Initial check
+    checkModal();
+
+    const observer = new MutationObserver(checkModal);
+    observer.observe(document.body, { 
+      attributes: true, 
+      attributeFilter: ['style'],
+      childList: true,
+      subtree: true
+    });
+    
     return () => observer.disconnect();
   }, []);
 

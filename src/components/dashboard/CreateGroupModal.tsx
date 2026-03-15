@@ -17,6 +17,11 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onC
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, []);
+
   const generateInviteCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -25,6 +25,7 @@ import { Avatar } from "@/components/ui";
 import { supabase, signOut } from "@/lib/supabase";
 import { UserProfile, Todo } from "@/lib/types";
 import { getProfileDisplayName, getProfileGreetingName } from "@/lib/utils";
+import { useNotifications } from "@/hooks/useNotifications";
 import { CreateGroupModal } from "@/components/dashboard/CreateGroupModal";
 import { useTheme } from "@/lib/theme";
 import Link from "next/link";
@@ -253,6 +254,7 @@ function DashboardContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const { requestPermission, sendLocalNotification, subscribeToPush } = useNotifications(undefined, userProfile?.id);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -619,6 +621,38 @@ function DashboardContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <div className="px-5 mt-4">
+        {typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted' && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={async () => {
+              const ok = await requestPermission();
+              if (ok) await subscribeToPush();
+            }}
+            className="w-full flex items-center justify-between px-5 py-4 rounded-2xl mb-4"
+            style={{ 
+              background: 'var(--color-brand-soft)', 
+              border: '1px solid var(--color-interactive-border)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 bg-white rounded-xl flex items-center justify-center text-[var(--color-brand)] shadow-sm">
+                <Leaf size={18} />
+              </div>
+              <div className="text-left">
+                <p className="text-[13px] font-bold text-[var(--color-foreground)]">Push-Mitteilungen</p>
+                <p className="text-[11px] font-medium text-[var(--color-subtle)]">Jetzt aktivieren für Live-Updates</p>
+              </div>
+            </div>
+            <div className="h-8 px-4 bg-[var(--color-brand)] text-white text-[12px] font-bold rounded-lg flex items-center justify-center">
+              Aktivieren
+            </div>
+          </motion.button>
+        )}
+      </div>
 
       <main className="px-5 overflow-x-hidden">
         {/* Greeting */}
