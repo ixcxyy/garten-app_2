@@ -17,6 +17,11 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({ groupId, onClo
   const [options, setOptions] = useState(['', '']);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, []);
+
   const addOption = () => {
     if (options.length < 6) setOptions([...options, '']);
   };
@@ -74,7 +79,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({ groupId, onClo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-60 flex items-end justify-center sm:items-center sm:p-6" data-modal-open="true">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

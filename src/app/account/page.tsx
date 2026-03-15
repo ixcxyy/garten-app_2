@@ -17,11 +17,15 @@ import {
   Chrome,
   Sun,
   Moon,
+  Bell,
+  BellOff,
+  ShieldCheck,
 } from "lucide-react";
 import { supabase, signOut } from "@/lib/supabase";
 import { UserProfile } from "@/lib/types";
 import { Avatar } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const isDemoEnv =
   !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -170,6 +174,29 @@ export default function AccountPage() {
   const handleSignOut = async () => {
     await signOut();
     router.push("/login");
+  };
+
+  const { requestPermission, subscribeToPush } = useNotifications(undefined, profile?.id, { autoSubscribe: false });
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'loading'>(
+    typeof window !== 'undefined' ? Notification.permission : 'loading'
+  );
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setNotifPermission(Notification.permission);
+    }
+  }, []);
+
+  const handleToggleNotifications = async () => {
+    if (notifPermission === 'granted') return; // Already granted, no easy way to 'revoke' via JS
+    
+    const granted = await requestPermission();
+    if (granted) {
+      setNotifPermission('granted');
+      await subscribeToPush();
+    } else {
+      setNotifPermission(Notification.permission);
+    }
   };
 
   const hasChanges =
@@ -401,6 +428,43 @@ export default function AccountPage() {
             </div>
           </button>
 
+          {/* Notifications Toggle */}
+          <button
+            onClick={handleToggleNotifications}
+            disabled={notifPermission === 'granted' || notifPermission === 'denied'}
+            className="flex w-full items-center gap-3 rounded-[16px] px-4 py-3.5 text-left transition-all disabled:opacity-80"
+            style={{ 
+              background: "var(--color-panel)", 
+              border: "1px solid var(--color-border)",
+              opacity: notifPermission === 'denied' ? 0.6 : 1
+            }}
+          >
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              style={{ 
+                background: notifPermission === 'granted' ? "var(--color-brand-soft)" : "var(--color-canvas-alt)", 
+                color: notifPermission === 'granted' ? "var(--color-brand)" : "var(--color-muted)" 
+              }}
+            >
+              {notifPermission === 'granted' ? <Bell size={16} /> : notifPermission === 'denied' ? <BellOff size={16} /> : <Bell size={16} />}
+            </div>
+            <div className="flex-1">
+              <p className="text-[14px] font-semibold" style={{ color: "var(--color-foreground)" }}>
+                Push-Benachrichtigungen
+              </p>
+              <p className="text-[12px]" style={{ color: "var(--color-muted)" }}>
+                {notifPermission === 'granted' 
+                  ? "Eingeschaltet" 
+                  : notifPermission === 'denied' 
+                    ? "In Browsereinstellungen blockiert"
+                    : "Tippen zum Aktivieren"}
+              </p>
+            </div>
+            {notifPermission === 'granted' && (
+              <ShieldCheck size={18} className="text-emerald-500 mr-2" />
+            )}
+          </button>
+
           {/* PWA Install Tutorial */}
           <button
             onClick={() => setShowTutorial(true)}
@@ -588,7 +652,7 @@ function PwaTutorialModal({ onClose }: { onClose: () => void }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/50"
+        className="fixed inset-0 z-60 bg-black/50"
         onClick={onClose}
         data-modal-open="true"
       />
@@ -597,7 +661,7 @@ function PwaTutorialModal({ onClose }: { onClose: () => void }) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 60 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="fixed inset-x-0 bottom-0 z-50 rounded-t-[28px] px-5 pt-6"
+        className="fixed inset-x-0 bottom-0 z-60 rounded-t-[28px] px-5 pt-6"
         data-modal-open="true"
         style={{
           maxHeight: '90dvh',

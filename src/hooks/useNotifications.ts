@@ -74,9 +74,25 @@ export function useNotifications(
   const subscribeToPush = useCallback(async () => {
     try {
       if (!currentUserId || typeof window === 'undefined') return;
-      if (!VAPID_PUBLIC_KEY) return;
       
+      if (!VAPID_PUBLIC_KEY) {
+        console.warn('Push subscription blocked: NEXT_PUBLIC_VAPID_PUBLIC_KEY is missing.');
+        return;
+      }
+      
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('Push notifications are not supported in this browser.');
+        return;
+      }
+
       const sw = await navigator.serviceWorker.ready;
+      
+      // Check for existing subscription first
+      const existingSub = await sw.pushManager.getSubscription();
+      if (existingSub) {
+        return;
+      }
+
       const sub = await sw.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: VAPID_PUBLIC_KEY,
@@ -94,7 +110,10 @@ export function useNotifications(
           auth: keys.auth,
         }]);
 
-      if (error && error.code !== '23505') throw error;
+      if (error) {
+        // Handle duplicate subscription (user already subscribed)
+        if (error.code !== '23505') throw error;
+      }
     } catch (error) {
       console.warn('Push subscription failed:', error);
     }
