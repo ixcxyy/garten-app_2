@@ -38,3 +38,27 @@ USING (
     bucket_id = 'todo-photos' AND
     (select auth.uid()) = owner
 );
+
+-- Add trigger to call Edge Function for PUSH
+-- Note: Replace with your actual Edge Function URL once deployed.
+
+CREATE OR REPLACE FUNCTION public.handle_todo_push()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM
+    net.http_post(
+      url := 'https://oesmmhuiygrrgwvdgymj.functions.supabase.co/push-notifications',
+      headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || auth.uid()),
+      body := jsonb_build_object(
+        'record', row_to_json(NEW),
+        'table', 'todos',
+        'type', TG_OP
+      )
+    );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_todo_change
+  AFTER INSERT OR UPDATE ON public.todos
+  FOR EACH ROW EXECUTE FUNCTION public.handle_todo_push();
