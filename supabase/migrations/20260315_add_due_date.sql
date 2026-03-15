@@ -1,0 +1,1 @@
+ALTER TABLE public.todos ADD COLUMN IF NOT EXISTS due_date DATE;

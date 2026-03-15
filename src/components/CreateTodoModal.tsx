@@ -20,6 +20,7 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState('');
   const [showPhotoSection, setShowPhotoSection] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   React.useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -56,8 +57,9 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
 
       onCreated();
       onClose();
-    } catch (error) {
-      console.error('Error creating todo:', error);
+    } catch (err: any) {
+      console.error('Error creating todo:', err);
+      setError(err.message || 'Fehler beim Erstellen der Aufgabe. Bitte prüfe ob die Datenbank-Spalte "due_date" existiert.');
     } finally {
       setIsSubmitting(false);
     }
@@ -284,6 +286,17 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
                 </div>
               </motion.div>
             </AnimatePresence>
+          )}
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl p-3 text-[12px] font-medium"
+              style={{ background: 'var(--color-danger-soft)', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
+            >
+              {error}
+            </motion.div>
           )}
 
           {/* Actions */}
