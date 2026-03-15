@@ -108,7 +108,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({ group, o
           </button>
         </div>
 
-        <div className="p-8">
+        <div className="px-8 pt-8" style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 1rem))' }}>
           {showDeleteConfirm ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-red-500">

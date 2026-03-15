@@ -130,7 +130,6 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onC
               placeholder="z.B. Mein Stadtgarten"
               className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-canvas)] px-4 py-3 text-[15px] font-medium text-[var(--color-foreground)] placeholder:text-[var(--color-subtle)] focus:border-[var(--color-brand)] focus:bg-[var(--color-panel)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-soft)]"
               required
-              autoFocus
             />
           </div>
 

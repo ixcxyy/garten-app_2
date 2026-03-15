@@ -84,7 +84,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
       }, 200);
 
       const { error: uploadError } = await supabase.storage
-        .from('garden-bucket')
+        .from('todo-photos')
         .upload(filePath, file);
 
       clearInterval(progressInterval);
@@ -94,7 +94,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
       setProgress(100);
 
       const { data: { publicUrl } } = supabase.storage
-        .from('garden-bucket')
+        .from('todo-photos')
         .getPublicUrl(filePath);
 
       setTimeout(() => {

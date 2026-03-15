@@ -475,8 +475,9 @@ export default function AccountPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="fixed inset-x-4 bottom-32 z-50 rounded-[24px] p-6"
+              className="fixed inset-x-4 z-50 rounded-[24px] p-6"
               style={{
+                bottom: 'max(8rem, calc(env(safe-area-inset-bottom) + 6rem))',
                 background: "var(--color-panel)",
                 border: "1px solid var(--color-border)",
                 boxShadow: "var(--shadow-modal)",

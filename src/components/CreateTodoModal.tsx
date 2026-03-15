@@ -116,7 +116,7 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
           </motion.button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-5 pb-8 pt-4 space-y-4">
+        <form onSubmit={handleSubmit} className="px-5 pt-4 space-y-4" style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 1rem))' }}>
           {/* Title */}
           <div>
             <label
@@ -145,7 +145,6 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
                 e.currentTarget.style.background = "var(--color-canvas)";
               }}
               required
-              autoFocus
             />
           </div>
 

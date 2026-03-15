@@ -146,7 +146,6 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({ groupId, onClo
               onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-brand)"; }}
               onBlur={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; }}
               required
-              autoFocus
             />
           </div>
 

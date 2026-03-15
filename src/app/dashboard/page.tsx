@@ -605,7 +605,6 @@ function DashboardContent() {
               >
                 <Search size={13} style={{ color: "var(--color-subtle)" }} />
                 <input
-                  autoFocus
                   type="text"
                   placeholder="Gruppe suchen..."
                   value={searchQuery}
