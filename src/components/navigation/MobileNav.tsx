@@ -14,8 +14,13 @@ export default function MobileNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Hide nav on auth pages
-  if (pathname === "/login" || pathname === "/register") return null;
+  // Hide nav on auth pages and landing
+  if (
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/register"
+  )
+    return null;
 
   const getActiveHref = () => {
     if (pathname.startsWith("/account")) return "/account";
@@ -25,19 +30,25 @@ export default function MobileNav() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-5 sm:hidden">
-      {/* Blur backdrop extension */}
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black to-transparent pointer-events-none" />
+      {/* Fade gradient */}
+      <div
+        className="absolute inset-x-0 bottom-0 h-28 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(to top, var(--color-nav-fade) 0%, transparent 100%)",
+        }}
+      />
 
       <nav
         style={{
-          background: "rgba(0,0,0,0.85)",
+          background: "var(--color-nav-bg)",
           backdropFilter: "blur(40px) saturate(180%)",
           WebkitBackdropFilter: "blur(40px) saturate(180%)",
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 8px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.5)",
+          boxShadow: "var(--color-nav-shadow)",
         }}
         className="relative mx-auto flex max-w-xs items-center justify-around rounded-[28px] px-2 py-2"
       >
-        {/* Back button – always visible on the left */}
+        {/* Back button */}
         <button
           onClick={() => router.back()}
           className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px]"
@@ -46,7 +57,7 @@ export default function MobileNav() {
           <ArrowLeft
             size={20}
             strokeWidth={2}
-            style={{ color: "rgba(255,255,255,0.45)" }}
+            style={{ color: "var(--color-on-surface-muted)" }}
           />
         </button>
 
@@ -69,7 +80,10 @@ export default function MobileNav() {
                     exit={{ opacity: 0, scale: 0.85 }}
                     transition={{ type: "spring", stiffness: 500, damping: 35 }}
                     className="absolute inset-0 z-0 rounded-[22px]"
-                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    style={{
+                      background: "var(--color-interactive-bg)",
+                      border: "1px solid var(--color-interactive-border)",
+                    }}
                   />
                 )}
               </AnimatePresence>
@@ -85,13 +99,21 @@ export default function MobileNav() {
                   <Icon
                     size={20}
                     strokeWidth={isActive ? 2.5 : 1.8}
-                    style={{ color: isActive ? "#ffffff" : "rgba(255,255,255,0.35)" }}
+                    style={{
+                      color: isActive
+                        ? "var(--color-on-surface)"
+                        : "var(--color-on-surface-muted)",
+                    }}
                   />
                 </motion.span>
                 <motion.span
                   animate={{ opacity: isActive ? 1 : 0.6 }}
                   className="text-[9px] font-bold uppercase tracking-[0.12em]"
-                  style={{ color: isActive ? "#ffffff" : "rgba(255,255,255,0.35)" }}
+                  style={{
+                    color: isActive
+                      ? "var(--color-on-surface)"
+                      : "var(--color-on-surface-muted)",
+                  }}
                 >
                   {item.label}
                 </motion.span>

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import MobileNav from "@/components/navigation/MobileNav";
+import { ThemeProvider } from "@/lib/theme";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: "#141414",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -33,10 +34,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de">
+    <html lang="de" suppressHydrationWarning>
+      <head>
+        {/* Prevent flash of wrong theme */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}`,
+          }}
+        />
+      </head>
       <body className={`${manrope.variable} min-h-screen antialiased`}>
-        <main className="min-h-screen pb-24 sm:pb-0">{children}</main>
-        <MobileNav />
+        <ThemeProvider>
+          <main className="min-h-screen pb-24 sm:pb-0">{children}</main>
+          <MobileNav />
+        </ThemeProvider>
       </body>
     </html>
   );

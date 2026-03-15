@@ -15,10 +15,13 @@ import {
   PlusSquare,
   MoreVertical,
   Chrome,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { supabase, signOut } from "@/lib/supabase";
 import { UserProfile } from "@/lib/types";
 import { Avatar } from "@/components/ui";
+import { useTheme } from "@/lib/theme";
 
 const isDemoEnv =
   !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -26,6 +29,7 @@ const isDemoEnv =
 
 export default function AccountPage() {
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -179,14 +183,15 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="relative min-h-screen pb-36" style={{ background: "var(--color-canvas)" }}>
+    <div className="relative min-h-screen pb-36" style={{ background: "var(--color-canvas)", color: "var(--color-foreground)" }}>
       {/* Header */}
       <header
         className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5"
         style={{
-          background: "rgba(245,240,232,0.9)",
+          background: "var(--color-header-bg)",
           backdropFilter: "blur(32px)",
           WebkitBackdropFilter: "blur(32px)",
+          borderBottom: "1px solid var(--color-border)",
         }}
       >
         <motion.div
@@ -347,6 +352,28 @@ export default function AccountPage() {
 
         {/* Actions */}
         <div className="py-4 space-y-2">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="flex w-full items-center gap-3 rounded-[16px] px-4 py-3.5 text-left transition-colors"
+            style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)" }}
+          >
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              style={{ background: "var(--color-brand-soft)", color: "var(--color-brand)" }}
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </div>
+            <div>
+              <p className="text-[14px] font-semibold" style={{ color: "var(--color-foreground)" }}>
+                {theme === "dark" ? "Light Mode aktivieren" : "Dark Mode aktivieren"}
+              </p>
+              <p className="text-[12px]" style={{ color: "var(--color-muted)" }}>
+                Aktuell: {theme === "dark" ? "Dunkles Design" : "Helles Design"}
+              </p>
+            </div>
+          </button>
+
           {/* PWA Install Tutorial */}
           <button
             onClick={() => setShowTutorial(true)}
@@ -377,7 +404,7 @@ export default function AccountPage() {
           >
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-              style={{ background: "var(--color-canvas-alt)", color: "var(--color-muted)" }}
+              style={{ background: "var(--color-interactive-bg)", color: "var(--color-muted)" }}
             >
               <LogOut size={16} />
             </div>

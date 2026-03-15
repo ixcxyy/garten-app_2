@@ -1,13 +1,13 @@
 :root {
   color-scheme: dark;
 
-  /* ── Core Palette — Pure Black ──────────────────────────────── */
-  --color-canvas: #000000;
-  --color-canvas-alt: #0a0a0a;
-  --color-surface: rgba(17, 17, 17, 0.9);
-  --color-panel: #0a0a0a;
-  --color-panel-mid: #111111;
-  --color-panel-strong: #1a1a1a;
+  /* ── Core Palette — Dark Gray (not pure black) ───────────────── */
+  --color-canvas: #141414;
+  --color-canvas-alt: #1a1a1a;
+  --color-surface: rgba(22, 22, 22, 0.9);
+  --color-panel: #1f1f1f;
+  --color-panel-mid: #252525;
+  --color-panel-strong: #2a2a2a;
   --color-foreground: #ffffff;
   --color-foreground-2: #e0e0e0;
   --color-muted: #737373;
@@ -106,6 +106,98 @@
   --duration-fast: 120ms;
   --duration-mid: 200ms;
   --duration-slow: 350ms;
+
+  /* ── Semantic / Component tokens ────────────────────────────── */
+  --color-header-bg: rgba(20, 20, 20, 0.80);
+  --color-overlay-bg: rgba(14, 14, 14, 0.95);
+  --color-interactive-bg: rgba(255, 255, 255, 0.04);
+  --color-interactive-border: rgba(255, 255, 255, 0.07);
+  --color-nav-bg: rgba(18, 18, 18, 0.88);
+  --color-nav-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 40px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.5);
+  --color-nav-fade: #141414;
+  --color-on-surface: #ffffff;
+  --color-on-surface-muted: rgba(255, 255, 255, 0.45);
+  --color-on-surface-subtle: rgba(255, 255, 255, 0.28);
+  --color-card-bg: #1f1f1f;
+  --color-card-border: rgba(255, 255, 255, 0.08);
+  --color-fab-bg: #ffffff;
+  --color-fab-fg: #000000;
+}
+
+/* ── Light Mode ──────────────────────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --color-canvas: #f5f0e8;
+  --color-canvas-alt: #ede8de;
+  --color-surface: rgba(255, 255, 255, 0.9);
+  --color-panel: #ffffff;
+  --color-panel-mid: #f9f6f1;
+  --color-panel-strong: #f0ebe2;
+  --color-foreground: #1a1a1a;
+  --color-foreground-2: #2d2d2d;
+  --color-muted: #737373;
+  --color-subtle: #9a9a9a;
+  --color-border: rgba(0, 0, 0, 0.07);
+  --color-border-strong: rgba(0, 0, 0, 0.10);
+  --color-border-highlight: rgba(0, 0, 0, 0.14);
+
+  --color-brand: #2d6147;
+  --color-brand-mid: #3d7a5a;
+  --color-brand-soft: rgba(45, 97, 71, 0.09);
+  --color-brand-strong: #1f4533;
+  --color-brand-glow: rgba(45, 97, 71, 0.12);
+
+  --color-accent: #5c8a72;
+  --color-accent-soft: rgba(92, 138, 114, 0.09);
+
+  --color-success: #2d6147;
+  --color-success-soft: rgba(45, 97, 71, 0.09);
+  --color-warning: #b45309;
+  --color-warning-soft: rgba(180, 83, 9, 0.09);
+  --color-danger: #dc2626;
+  --color-danger-soft: rgba(220, 38, 38, 0.08);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-card:
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 1px 1px rgba(0, 0, 0, 0.06),
+    0 4px 8px rgba(0, 0, 0, 0.06),
+    0 12px 32px rgba(0, 0, 0, 0.05);
+  --shadow-card-hover:
+    0 0 0 1px rgba(0, 0, 0, 0.07),
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.09),
+    0 24px 48px rgba(0, 0, 0, 0.07);
+  --shadow-modal:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 24px 80px rgba(0, 0, 0, 0.14),
+    0 8px 24px rgba(0, 0, 0, 0.10);
+  --shadow-brand:
+    0 0 0 1px rgba(45, 97, 71, 0.15),
+    0 4px 16px rgba(45, 97, 71, 0.20);
+  --shadow-brand-lg:
+    0 0 0 1px rgba(45, 97, 71, 0.18),
+    0 8px 32px rgba(45, 97, 71, 0.25);
+
+  --glass-background: rgba(245, 240, 232, 0.88);
+  --glass-border: rgba(0, 0, 0, 0.07);
+
+  --color-header-bg: rgba(245, 240, 232, 0.88);
+  --color-overlay-bg: rgba(237, 232, 222, 0.97);
+  --color-interactive-bg: rgba(0, 0, 0, 0.04);
+  --color-interactive-border: rgba(0, 0, 0, 0.07);
+  --color-nav-bg: rgba(245, 240, 232, 0.92);
+  --color-nav-shadow: 0 0 0 1px rgba(0, 0, 0, 0.07), 0 8px 40px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.07);
+  --color-nav-fade: #f5f0e8;
+  --color-on-surface: #1a1a1a;
+  --color-on-surface-muted: rgba(26, 26, 26, 0.50);
+  --color-on-surface-subtle: rgba(26, 26, 26, 0.35);
+  --color-card-bg: #ffffff;
+  --color-card-border: rgba(0, 0, 0, 0.08);
+  --color-fab-bg: #2d6147;
+  --color-fab-fg: #ffffff;
 }
 
 /* ── Display Typography ───────────────────────────────────────── */

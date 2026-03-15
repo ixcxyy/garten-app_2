@@ -12,6 +12,9 @@ import {
   LogOut,
   ArrowRight,
   Crown,
+  Sun,
+  Moon,
+  Settings,
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui";
@@ -19,6 +22,8 @@ import { supabase, signOut } from "@/lib/supabase";
 import { UserProfile } from "@/lib/types";
 import { getProfileDisplayName, getProfileGreetingName } from "@/lib/utils";
 import { CreateGroupModal } from "@/components/dashboard/CreateGroupModal";
+import { useTheme } from "@/lib/theme";
+import Link from "next/link";
 
 type DashboardGroup = {
   id: string;
@@ -113,14 +118,17 @@ function GroupCard({
       <div
         className="relative overflow-hidden rounded-2xl transition-all duration-200"
         style={{
-          background: "#0a0a0a",
-          border: "1px solid rgba(255,255,255,0.06)",
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.03), 0 1px 2px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.2)",
+          background: "var(--color-card-bg)",
+          border: "1px solid var(--color-card-border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div
           className="absolute inset-x-0 top-0 h-px"
-          style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)" }}
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, var(--color-border-highlight), transparent)",
+          }}
         />
 
         <div className="px-5 py-5">
@@ -128,9 +136,9 @@ function GroupCard({
             <div
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[15px] font-semibold"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                color: "#ffffff",
+                background: "var(--color-interactive-bg)",
+                border: "1px solid var(--color-interactive-border)",
+                color: "var(--color-foreground)",
                 letterSpacing: "-0.02em",
               }}
             >
@@ -142,9 +150,9 @@ function GroupCard({
                 <span
                   className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.5)",
-                    border: "1px solid rgba(255,255,255,0.06)",
+                    background: "var(--color-brand-soft)",
+                    color: "var(--color-brand)",
+                    border: "1px solid var(--color-interactive-border)",
                   }}
                 >
                   <Crown size={8} />
@@ -154,18 +162,18 @@ function GroupCard({
               <div
                 className="flex h-7 w-7 items-center justify-center rounded-full opacity-40 group-hover:opacity-70 transition-opacity"
                 style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "var(--color-interactive-bg)",
+                  border: "1px solid var(--color-interactive-border)",
                 }}
               >
-                <ArrowRight size={11} style={{ color: "#fff" }} />
+                <ArrowRight size={11} style={{ color: "var(--color-foreground)" }} />
               </div>
             </div>
           </div>
 
           <h3
             className="text-[16px] font-semibold leading-tight mb-1.5"
-            style={{ color: "#ffffff", letterSpacing: "-0.02em" }}
+            style={{ color: "var(--color-foreground)", letterSpacing: "-0.02em" }}
           >
             {name}
           </h3>
@@ -173,7 +181,7 @@ function GroupCard({
           {description && (
             <p
               className="text-[13px] leading-relaxed line-clamp-2 mb-4"
-              style={{ color: "rgba(255,255,255,0.4)" }}
+              style={{ color: "var(--color-muted)" }}
             >
               {description}
             </p>
@@ -181,12 +189,12 @@ function GroupCard({
 
           <div
             className="flex items-center justify-between pt-3.5"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+            style={{ borderTop: "1px solid var(--color-border)" }}
           >
             <div className="flex items-center gap-3">
               <span
                 className="flex items-center gap-1.5 text-[12px] font-medium"
-                style={{ color: "rgba(255,255,255,0.3)" }}
+                style={{ color: "var(--color-subtle)" }}
               >
                 <Users size={11} strokeWidth={1.8} />
                 {memberCount}
@@ -196,9 +204,9 @@ function GroupCard({
                 <span
                   className="rounded-full px-2.5 py-[3px] text-[11px] font-medium"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.5)",
-                    border: "1px solid rgba(255,255,255,0.06)",
+                    background: "var(--color-interactive-bg)",
+                    color: "var(--color-muted)",
+                    border: "1px solid var(--color-interactive-border)",
                   }}
                 >
                   {pendingTodos} offen
@@ -207,12 +215,12 @@ function GroupCard({
                 <span
                   className="rounded-full px-2.5 py-[3px] text-[11px] font-medium"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.4)",
-                    border: "1px solid rgba(255,255,255,0.06)",
+                    background: "var(--color-brand-soft)",
+                    color: "var(--color-brand)",
+                    border: "1px solid var(--color-interactive-border)",
                   }}
                 >
-                  Erledigt
+                  Erledigt ✓
                 </span>
               ) : null}
             </div>
@@ -221,19 +229,23 @@ function GroupCard({
               <div className="flex items-center gap-2 shrink-0">
                 <div
                   className="h-[2px] w-16 overflow-hidden rounded-full"
-                  style={{ background: "rgba(255,255,255,0.06)" }}
+                  style={{ background: "var(--color-border-strong)" }}
                 >
                   <motion.div
                     className="h-full rounded-full"
-                    style={{ background: "rgba(255,255,255,0.3)" }}
+                    style={{ background: "var(--color-brand)" }}
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
-                    transition={{ duration: 1, delay: index * 0.06 + 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{
+                      duration: 1,
+                      delay: index * 0.06 + 0.4,
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
                   />
                 </div>
                 <span
                   className="text-[11px] font-medium tabular-nums"
-                  style={{ color: "rgba(255,255,255,0.35)" }}
+                  style={{ color: "var(--color-subtle)" }}
                 >
                   {progress}%
                 </span>
@@ -249,6 +261,7 @@ function GroupCard({
 function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const isDemoMode =
     searchParams.get("mode") === "demo" ||
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -315,11 +328,20 @@ function DashboardContent() {
         }
 
         const groupIds = normalizedGroups.map((g) => g.id);
-        const [{ data: memberRows }, { data: pendingRows }, { data: doneRows }] = await Promise.all([
-          supabase.from("group_members").select("group_id").in("group_id", groupIds),
-          supabase.from("todos").select("group_id").in("group_id", groupIds).eq("status", "pending"),
-          supabase.from("todos").select("group_id").in("group_id", groupIds).eq("status", "completed"),
-        ]);
+        const [{ data: memberRows }, { data: pendingRows }, { data: doneRows }] =
+          await Promise.all([
+            supabase.from("group_members").select("group_id").in("group_id", groupIds),
+            supabase
+              .from("todos")
+              .select("group_id")
+              .in("group_id", groupIds)
+              .eq("status", "pending"),
+            supabase
+              .from("todos")
+              .select("group_id")
+              .in("group_id", groupIds)
+              .eq("status", "completed"),
+          ]);
 
         const memberCounts = (memberRows ?? []).reduce<Record<string, number>>((acc, row) => {
           acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
@@ -382,23 +404,33 @@ function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: "#000" }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}>
-          <Leaf size={18} style={{ color: "rgba(255,255,255,0.3)" }} strokeWidth={1.5} />
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ background: "var(--color-canvas)" }}
+      >
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+        >
+          <Leaf size={18} style={{ color: "var(--color-brand)" }} strokeWidth={1.5} />
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen pb-36" style={{ background: "#000000" }}>
+    <div
+      className="relative min-h-screen pb-36"
+      style={{ background: "var(--color-canvas)" }}
+    >
+      {/* Header */}
       <header
         className="sticky top-0 z-30 flex items-center justify-between px-5 py-3"
         style={{
-          background: "rgba(0,0,0,0.75)",
+          background: "var(--color-header-bg)",
           backdropFilter: "blur(40px) saturate(180%)",
           WebkitBackdropFilter: "blur(40px) saturate(180%)",
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
+          borderBottom: "1px solid var(--color-border)",
         }}
       >
         <motion.div
@@ -410,15 +442,15 @@ function DashboardContent() {
           <div
             className="flex h-7 w-7 items-center justify-center rounded-lg"
             style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--color-brand-soft)",
+              border: "1px solid var(--color-interactive-border)",
             }}
           >
-            <Leaf size={13} style={{ color: "rgba(255,255,255,0.6)" }} strokeWidth={1.8} />
+            <Leaf size={13} style={{ color: "var(--color-brand)" }} strokeWidth={1.8} />
           </div>
           <span
             className="text-[15px] font-semibold"
-            style={{ color: "#ffffff", letterSpacing: "-0.02em" }}
+            style={{ color: "var(--color-foreground)", letterSpacing: "-0.02em" }}
           >
             Garden Groups
           </span>
@@ -429,9 +461,13 @@ function DashboardContent() {
             whileTap={{ scale: 0.88 }}
             onClick={() => setIsSearchOpen(!isSearchOpen)}
             className="flex h-8 w-8 items-center justify-center rounded-full"
-            style={{ color: "rgba(255,255,255,0.4)" }}
+            style={{ color: "var(--color-muted)" }}
           >
-            {isSearchOpen ? <X size={15} strokeWidth={2} /> : <Search size={15} strokeWidth={1.8} />}
+            {isSearchOpen ? (
+              <X size={15} strokeWidth={2} />
+            ) : (
+              <Search size={15} strokeWidth={1.8} />
+            )}
           </motion.button>
 
           <div className="relative">
@@ -454,22 +490,65 @@ function DashboardContent() {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: -4 }}
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl"
+                    className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl"
                     style={{
-                      background: "#0a0a0a",
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "var(--color-panel)",
+                      border: "1px solid var(--color-border-strong)",
                       boxShadow: "var(--shadow-modal)",
                     }}
                   >
-                    <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                      <p className="text-[13px] font-semibold" style={{ color: "#ffffff" }}>
+                    {/* User info */}
+                    <div
+                      className="px-4 py-3"
+                      style={{ borderBottom: "1px solid var(--color-border)" }}
+                    >
+                      <p
+                        className="text-[13px] font-semibold"
+                        style={{ color: "var(--color-foreground)" }}
+                      >
                         {profileDisplayName}
                       </p>
                     </div>
+
+                    {/* Theme toggle */}
+                    <button
+                      onClick={() => {
+                        toggleTheme();
+                        setShowProfileMenu(false);
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-medium"
+                      style={{
+                        color: "var(--color-foreground)",
+                        borderBottom: "1px solid var(--color-border)",
+                      }}
+                    >
+                      {theme === "dark" ? (
+                        <Sun size={13} style={{ color: "var(--color-muted)" }} />
+                      ) : (
+                        <Moon size={13} style={{ color: "var(--color-muted)" }} />
+                      )}
+                      {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                    </button>
+
+                    {/* Account link */}
+                    <Link
+                      href="/account"
+                      onClick={() => setShowProfileMenu(false)}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-medium"
+                      style={{
+                        color: "var(--color-foreground)",
+                        borderBottom: "1px solid var(--color-border)",
+                      }}
+                    >
+                      <Settings size={13} style={{ color: "var(--color-muted)" }} />
+                      Einstellungen
+                    </Link>
+
+                    {/* Sign out */}
                     <button
                       onClick={handleSignOut}
                       className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-medium"
-                      style={{ color: "#dc2626" }}
+                      style={{ color: "var(--color-danger)" }}
                     >
                       <LogOut size={13} />
                       Abmelden
@@ -482,6 +561,7 @@ function DashboardContent() {
         </div>
       </header>
 
+      {/* Search bar */}
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div
@@ -491,33 +571,35 @@ function DashboardContent() {
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="overflow-hidden sticky top-[49px] z-20"
             style={{
-              background: "rgba(0,0,0,0.9)",
+              background: "var(--color-overlay-bg)",
               backdropFilter: "blur(20px)",
               WebkitBackdropFilter: "blur(20px)",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              borderBottom: "1px solid var(--color-border)",
             }}
           >
             <div className="px-5 py-2.5">
               <div
                 className="flex items-center gap-2.5 rounded-xl px-4 py-2.5"
                 style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "var(--color-interactive-bg)",
+                  border: "1px solid var(--color-interactive-border)",
                 }}
               >
-                <Search size={13} style={{ color: "rgba(255,255,255,0.25)" }} />
+                <Search size={13} style={{ color: "var(--color-subtle)" }} />
                 <input
                   autoFocus
                   type="text"
                   placeholder="Gruppe suchen..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-transparent text-[14px] focus:outline-none placeholder:text-white/20"
-                  style={{ color: "#ffffff" }}
+                  className="flex-1 bg-transparent text-[14px] focus:outline-none"
+                  style={{
+                    color: "var(--color-foreground)",
+                  }}
                 />
                 {searchQuery && (
                   <button onClick={() => setSearchQuery("")}>
-                    <X size={13} style={{ color: "rgba(255,255,255,0.25)" }} />
+                    <X size={13} style={{ color: "var(--color-subtle)" }} />
                   </button>
                 )}
               </div>
@@ -527,6 +609,7 @@ function DashboardContent() {
       </AnimatePresence>
 
       <main className="px-5 overflow-x-hidden">
+        {/* Greeting */}
         <motion.div
           className="pt-10 pb-9"
           initial={{ opacity: 0, y: 12 }}
@@ -534,10 +617,13 @@ function DashboardContent() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <div className="flex items-center gap-2.5 mb-5">
-            <div className="h-px w-5" style={{ background: "rgba(255,255,255,0.2)" }} />
+            <div
+              className="h-px w-5"
+              style={{ background: "var(--color-border-strong)" }}
+            />
             <span
               className="text-[10px] font-semibold uppercase tracking-[0.2em]"
-              style={{ color: "rgba(255,255,255,0.35)" }}
+              style={{ color: "var(--color-subtle)" }}
             >
               Dein Garten
             </span>
@@ -549,18 +635,18 @@ function DashboardContent() {
               fontWeight: 800,
               lineHeight: 0.94,
               letterSpacing: "-0.04em",
-              color: "#ffffff",
+              color: "var(--color-foreground)",
             }}
           >
             Hallo,{" "}
-            <span style={{ color: "rgba(255,255,255,0.4)", display: "inline-block" }}>
+            <span style={{ color: "var(--color-muted)", display: "inline-block" }}>
               {greetingName}
             </span>
           </h1>
 
           <p
             className="mt-4 text-[14px] leading-relaxed"
-            style={{ color: "rgba(255,255,255,0.3)", maxWidth: "26ch" }}
+            style={{ color: "var(--color-subtle)", maxWidth: "26ch" }}
           >
             {groups.length > 0
               ? `${groups.length} ${groups.length === 1 ? "Gruppe" : "Gruppen"} aktiv · ${totalPendingTodos} offen`
@@ -568,6 +654,7 @@ function DashboardContent() {
           </p>
         </motion.div>
 
+        {/* Stats cards */}
         {groups.length > 0 && (
           <motion.div
             className="mb-8 grid grid-cols-3 gap-2"
@@ -584,23 +671,27 @@ function DashboardContent() {
                 key={label}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.1 + i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                transition={{
+                  duration: 0.4,
+                  delay: 0.1 + i * 0.05,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
                 className="rounded-2xl px-3 py-4 text-center"
                 style={{
-                  background: "#0a0a0a",
-                  border: "1px solid rgba(255,255,255,0.05)",
-                  boxShadow: "0 0 0 1px rgba(255,255,255,0.02), 0 2px 8px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.2)",
+                  background: "var(--color-panel)",
+                  border: "1px solid var(--color-border)",
+                  boxShadow: "var(--shadow-card)",
                 }}
               >
                 <p
                   className="text-[28px] leading-none font-bold tabular-nums"
-                  style={{ color: "#ffffff", letterSpacing: "-0.04em" }}
+                  style={{ color: "var(--color-foreground)", letterSpacing: "-0.04em" }}
                 >
                   {value}
                 </p>
                 <p
                   className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
+                  style={{ color: "var(--color-subtle)" }}
                 >
                   {label}
                 </p>
@@ -609,6 +700,7 @@ function DashboardContent() {
           </motion.div>
         )}
 
+        {/* Section label */}
         <motion.div
           className="flex items-center gap-3 mb-4"
           initial={{ opacity: 0 }}
@@ -617,41 +709,46 @@ function DashboardContent() {
         >
           <span
             className="text-[10px] font-semibold uppercase tracking-[0.18em] shrink-0"
-            style={{ color: "rgba(255,255,255,0.2)" }}
+            style={{ color: "var(--color-subtle)" }}
           >
             {searchQuery ? `Ergebnisse (${filteredGroups.length})` : "Deine Gruppen"}
           </span>
-          <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.05)" }} />
+          <div className="h-px flex-1" style={{ background: "var(--color-border)" }} />
         </motion.div>
 
+        {/* Group list / empty state */}
         {filteredGroups.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-4 flex flex-col items-center justify-center rounded-2xl py-16 text-center"
             style={{
-              background: "#0a0a0a",
-              border: "1px dashed rgba(255,255,255,0.08)",
+              background: "var(--color-panel)",
+              border: "1px dashed var(--color-border-strong)",
             }}
           >
             <div
               className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.06)",
+                background: "var(--color-interactive-bg)",
+                border: "1px solid var(--color-interactive-border)",
               }}
             >
-              <Sprout size={24} style={{ color: "rgba(255,255,255,0.3)" }} strokeWidth={1.5} />
+              <Sprout
+                size={24}
+                style={{ color: "var(--color-muted)" }}
+                strokeWidth={1.5}
+              />
             </div>
             <h3
               className="text-[17px] font-bold"
-              style={{ color: "#ffffff", letterSpacing: "-0.02em" }}
+              style={{ color: "var(--color-foreground)", letterSpacing: "-0.02em" }}
             >
               {searchQuery ? "Keine Treffer" : "Noch keine Gruppen"}
             </h3>
             <p
               className="mt-2 text-[13px] max-w-[200px] leading-relaxed"
-              style={{ color: "rgba(255,255,255,0.3)" }}
+              style={{ color: "var(--color-muted)" }}
             >
               {searchQuery
                 ? "Versuche einen anderen Begriff"
@@ -679,6 +776,7 @@ function DashboardContent() {
         )}
       </main>
 
+      {/* FAB */}
       <motion.button
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -687,9 +785,9 @@ function DashboardContent() {
         onClick={() => setIsCreateModalOpen(true)}
         className="fixed bottom-28 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full"
         style={{
-          background: "#ffffff",
-          color: "#000000",
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.1), 0 4px 12px rgba(0,0,0,0.5), 0 12px 40px rgba(0,0,0,0.3), 0 0 60px rgba(255,255,255,0.06)",
+          background: "var(--color-fab-bg)",
+          color: "var(--color-fab-fg)",
+          boxShadow: "var(--shadow-brand-lg)",
         }}
       >
         <Plus size={22} strokeWidth={2.5} />
@@ -715,9 +813,15 @@ export default function DashboardPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center" style={{ background: "#000" }}>
-          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}>
-            <Leaf size={18} style={{ color: "rgba(255,255,255,0.3)" }} strokeWidth={1.5} />
+        <div
+          className="flex min-h-screen items-center justify-center"
+          style={{ background: "var(--color-canvas)" }}
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+          >
+            <Leaf size={18} style={{ color: "var(--color-brand)" }} strokeWidth={1.5} />
           </motion.div>
         </div>
       }
