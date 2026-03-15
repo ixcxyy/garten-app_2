@@ -64,7 +64,6 @@ function GroupPageContent() {
   const [activeTab, setActiveTab] = useState<'open' | 'done'>('open');
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
 
-  // Fetch current user id for notification suppression
   useEffect(() => {
     if (isDemoMode) return;
     supabase.auth.getUser().then(({ data }) => {
@@ -72,7 +71,6 @@ function GroupPageContent() {
     });
   }, [isDemoMode]);
 
-  // Push notifications for new todos in this group
   useNotifications(typeof id === 'string' ? id : undefined, currentUserId);
 
   const copyInviteLink = () => {
@@ -174,49 +172,52 @@ function GroupPageContent() {
       <header
         className="sticky top-0 z-30"
         style={{
-          background: "rgba(248,243,233,0.92)",
-          backdropFilter: "blur(28px)",
-          WebkitBackdropFilter: "blur(28px)",
+          background: "var(--color-header-bg)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Back + title */}
           <div className="flex items-center gap-3 min-w-0">
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={() => router.back()}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-              style={{ background: "var(--color-canvas-alt)", color: "var(--color-muted)" }}
+              style={{
+                background: "var(--color-interactive-bg)",
+                border: "1px solid var(--color-interactive-border)",
+                color: "var(--color-foreground)",
+              }}
             >
               <ArrowLeft size={17} strokeWidth={2.5} />
             </motion.button>
             <div className="min-w-0">
               <p
                 className="text-[10px] font-bold uppercase tracking-[0.18em]"
-                style={{ color: "var(--color-brand)" }}
+                style={{ color: "var(--color-subtle)" }}
               >
                 Gruppe
               </p>
               <h1
                 className="truncate text-[16px] leading-tight tracking-tight"
-                style={{
-                  color: "var(--color-foreground)",
-                  fontFamily: "var(--font-instrument-serif)",
-                }}
+                style={{ color: "var(--color-foreground)", letterSpacing: "-0.02em", fontWeight: 600 }}
               >
                 {group.name}
               </h1>
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex shrink-0 items-center gap-1.5">
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={copyInviteLink}
               className="relative flex h-9 w-9 items-center justify-center rounded-full transition-colors"
-              style={{ background: "var(--color-canvas-alt)", color: "var(--color-muted)" }}
+              style={{
+                background: "var(--color-interactive-bg)",
+                border: "1px solid var(--color-interactive-border)",
+                color: "var(--color-muted)",
+              }}
               title="Einladungslink kopieren"
             >
               <AnimatePresence mode="wait">
@@ -241,7 +242,11 @@ function GroupPageContent() {
               whileTap={{ scale: 0.88 }}
               onClick={() => setIsSettingsOpen(true)}
               className="flex h-9 w-9 items-center justify-center rounded-full"
-              style={{ background: "var(--color-canvas-alt)", color: "var(--color-muted)" }}
+              style={{
+                background: "var(--color-interactive-bg)",
+                border: "1px solid var(--color-interactive-border)",
+                color: "var(--color-muted)",
+              }}
             >
               <Settings size={16} strokeWidth={2} />
             </motion.button>
@@ -250,20 +255,19 @@ function GroupPageContent() {
 
         {/* Progress + tabs */}
         <div className="px-4 pb-3 space-y-3">
-          {/* Progress bar */}
           {todos.length > 0 && (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium" style={{ color: "var(--color-subtle)" }}>
                   Fortschritt
                 </span>
-                <span className="text-[11px] font-bold" style={{ color: "var(--color-brand)" }}>
+                <span className="text-[11px] font-bold" style={{ color: "var(--color-muted)" }}>
                   {completionPct}%
                 </span>
               </div>
               <div
                 className="h-1.5 w-full overflow-hidden rounded-full"
-                style={{ background: "var(--color-canvas-alt)" }}
+                style={{ background: "var(--color-border-strong)" }}
               >
                 <motion.div
                   className="h-full rounded-full"
@@ -279,7 +283,10 @@ function GroupPageContent() {
           {/* Tab pills */}
           <div
             className="flex gap-1.5 rounded-2xl p-1"
-            style={{ background: "var(--color-canvas-alt)" }}
+            style={{
+              background: "var(--color-interactive-bg)",
+              border: "1px solid var(--color-border)",
+            }}
           >
             {([
               ['open', 'Offen', openTodos.length] as const,
@@ -290,7 +297,7 @@ function GroupPageContent() {
                 onClick={() => setActiveTab(tab)}
                 className="relative flex-1 rounded-[14px] py-2 text-[13px] font-semibold transition-colors"
                 style={{
-                  color: activeTab === tab ? "var(--color-brand)" : "var(--color-subtle)",
+                  color: activeTab === tab ? "var(--color-foreground)" : "var(--color-muted)",
                 }}
               >
                 {activeTab === tab && (
@@ -331,19 +338,23 @@ function GroupPageContent() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-10 flex flex-col items-center rounded-3xl py-16 text-center"
+              className="mt-10 flex flex-col items-center rounded-2xl py-16 text-center"
               style={{
                 background: "var(--color-panel)",
-                border: "2px dashed var(--color-border)",
+                border: "1px dashed var(--color-border-strong)",
               }}
             >
               <div
                 className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
-                style={{ background: "var(--color-canvas-alt)", color: "var(--color-subtle)" }}
+                style={{
+                  background: "var(--color-interactive-bg)",
+                  border: "1px solid var(--color-interactive-border)",
+                  color: "var(--color-muted)",
+                }}
               >
                 {activeTab === 'open' ? <ListTodo size={22} strokeWidth={1.5} /> : <CheckCheck size={22} strokeWidth={1.5} />}
               </div>
-              <p className="text-[15px] font-semibold" style={{ color: "var(--color-foreground)" }}>
+              <p className="text-[15px] font-semibold" style={{ color: "var(--color-foreground)", letterSpacing: "-0.02em" }}>
                 {activeTab === 'open' ? 'Keine offenen Aufgaben' : 'Noch nichts erledigt'}
               </p>
               {activeTab === 'open' && (
@@ -385,10 +396,11 @@ function GroupPageContent() {
             whileTap={{ scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 24 }}
             onClick={() => setIsModalOpen(true)}
-            className="fixed bottom-28 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full text-white"
+            className="fixed bottom-28 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full"
             style={{
-              background: "var(--color-brand)",
-              boxShadow: "var(--shadow-brand)",
+              background: "var(--color-fab-bg)",
+              color: "var(--color-fab-fg)",
+              boxShadow: "var(--shadow-brand-lg)",
             }}
           >
             <Plus size={24} strokeWidth={2.5} />

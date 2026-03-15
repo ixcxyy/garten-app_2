@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useState, type InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +14,7 @@ export function Input({ label, hint, className, ...props }: InputProps) {
   return (
     <label className="block space-y-2">
       {label ? (
-        <span className="text-sm font-medium tracking-[-0.02em] text-[var(--color-muted)]">
+        <span className="text-sm font-medium tracking-[-0.02em]" style={{ color: "var(--color-muted)" }}>
           {label}
         </span>
       ) : null}
@@ -23,21 +22,23 @@ export function Input({ label, hint, className, ...props }: InputProps) {
       <div className="relative">
         <input
           className={cn(
-            "h-[52px] w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white/70 px-4 text-[15px] text-[var(--color-foreground)] shadow-[var(--shadow-soft)] transition-all placeholder:text-[var(--color-subtle)] focus:border-[var(--color-brand)] focus:bg-white",
+            "h-[52px] w-full rounded-xl px-4 text-[15px] transition-all outline-none",
             className,
           )}
+          style={{
+            background: isFocused ? "var(--color-panel)" : "var(--color-interactive-bg)",
+            border: isFocused
+              ? "1px solid var(--color-border-highlight)"
+              : "1px solid var(--color-border-strong)",
+            color: "var(--color-foreground)",
+          }}
           onBlur={() => setIsFocused(false)}
           onFocus={() => setIsFocused(true)}
           {...props}
         />
-        <motion.div
-          className="pointer-events-none absolute inset-0 rounded-[var(--radius-md)] border border-[var(--color-brand)]"
-          initial={false}
-          animate={{ opacity: isFocused ? 0.14 : 0, scale: isFocused ? 1 : 0.99 }}
-        />
       </div>
 
-      {hint ? <p className="text-xs text-[var(--color-subtle)]">{hint}</p> : null}
+      {hint ? <p className="text-xs" style={{ color: "var(--color-subtle)" }}>{hint}</p> : null}
     </label>
   );
 }

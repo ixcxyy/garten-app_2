@@ -14,11 +14,11 @@ export interface ButtonProps extends HTMLMotionProps<"button"> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--color-brand)] text-white shadow-soft hover:bg-[var(--color-brand-strong)]",
+    "bg-[var(--color-fab-bg)] text-[var(--color-fab-fg)] shadow-soft hover:opacity-90",
   secondary:
-    "bg-white border border-[var(--color-border)] text-[var(--color-foreground)] shadow-soft hover:bg-[var(--color-canvas)]",
+    "border border-[var(--color-border-strong)] text-[var(--color-foreground)] shadow-soft hover:bg-[var(--color-interactive-bg)]",
   ghost:
-    "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-brand-soft)] hover:text-[var(--color-brand)]",
+    "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-interactive-bg)] hover:text-[var(--color-foreground)]",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -36,7 +36,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         whileTap={disabled ? undefined : { scale: 0.985 }}
         transition={{ duration: 0.18, ease: "easeOut" }}
         className={cn(
-          "inline-flex min-w-[44px] items-center justify-center rounded-[var(--radius-pill)] font-medium tracking-[-0.02em] transition-all duration-200 disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex min-w-[44px] items-center justify-center rounded-full font-semibold tracking-[-0.02em] transition-all duration-200 disabled:pointer-events-none disabled:opacity-40",
           variantClasses[variant],
           sizeClasses[size],
           className,

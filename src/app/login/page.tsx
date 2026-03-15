@@ -8,7 +8,6 @@ import AuthButton from "@/components/auth/AuthButton";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Leaf } from "lucide-react";
 
 const hasSupabaseConfig = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -25,7 +24,6 @@ export default function LoginPage() {
 function LoginPageContent() {
   const searchParams = useSearchParams();
   const showRegisteredMessage = searchParams.get("registered") === "true";
-
   return <LoginContent registered={showRegisteredMessage} />;
 }
 
@@ -69,7 +67,14 @@ function LoginContent({ registered }: { registered: boolean }) {
               animate={{ opacity: 1, height: "auto" }}
               className="overflow-hidden"
             >
-              <div className="mb-6 rounded-[18px] border border-[var(--color-brand-soft)] bg-[var(--color-brand-soft)] px-4 py-4 text-sm font-medium text-[var(--color-brand-strong)]">
+              <div
+                className="mb-6 rounded-[18px] px-4 py-4 text-sm font-medium"
+                style={{
+                  background: "var(--color-brand-soft)",
+                  border: "1px solid var(--color-interactive-border)",
+                  color: "var(--color-brand)",
+                }}
+              >
                 Konto erstellt. Du kannst dich jetzt anmelden.
               </div>
             </motion.div>
@@ -104,7 +109,14 @@ function LoginContent({ registered }: { registered: boolean }) {
               animate={{ opacity: 1, height: "auto" }}
               className="overflow-hidden"
             >
-              <div className="rounded-[18px] border border-red-500/10 bg-red-500/5 px-4 py-4 text-sm font-medium text-red-600">
+              <div
+                className="rounded-[18px] px-4 py-4 text-sm font-medium"
+                style={{
+                  background: "var(--color-danger-soft)",
+                  border: "1px solid rgba(220,38,38,0.15)",
+                  color: "var(--color-danger)",
+                }}
+              >
                 {error}
               </div>
             </motion.div>
@@ -117,19 +129,26 @@ function LoginContent({ registered }: { registered: boolean }) {
           </AuthButton>
         </div>
 
-        <p className="text-center text-[13px] text-[var(--color-muted)]">
+        <p className="text-center text-[13px]" style={{ color: "var(--color-muted)" }}>
           Noch kein Konto?{" "}
           <Link
             href="/register"
-            className="font-bold text-[var(--color-brand)] transition-colors hover:text-[var(--color-brand-strong)]"
+            className="font-bold transition-colors"
+            style={{ color: "var(--color-brand)" }}
           >
             Jetzt registrieren
           </Link>
         </p>
 
         {!hasSupabaseConfig && (
-          <div className="rounded-[22px] bg-[var(--color-canvas)] p-5 text-center">
-            <p className="text-[12px] font-medium leading-relaxed text-[var(--color-subtle)]">
+          <div
+            className="rounded-[18px] p-5 text-center"
+            style={{
+              background: "var(--color-interactive-bg)",
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            <p className="text-[12px] font-medium leading-relaxed" style={{ color: "var(--color-subtle)" }}>
               Hinweis: Supabase ist noch nicht verbunden. <br />
               Die App startet im Demo-Modus.
             </p>
