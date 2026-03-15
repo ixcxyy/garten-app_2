@@ -1,19 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Instrument_Serif } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import MobileNav from "@/components/navigation/MobileNav";
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -22,13 +15,13 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Garden Groups",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2d6147",
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -41,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
-      <body className={`${dmSans.variable} ${instrumentSerif.variable} min-h-screen antialiased`}>
+      <body className={`${manrope.variable} min-h-screen antialiased`}>
         <main className="min-h-screen pb-24 sm:pb-0">{children}</main>
         <MobileNav />
       </body>

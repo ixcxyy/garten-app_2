@@ -10,7 +10,7 @@ import {
   Users,
   X,
   LogOut,
-  ChevronRight,
+  ArrowRight,
   Crown,
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -48,7 +48,7 @@ const MOCK_GROUPS: DashboardGroup[] = [
   {
     id: "demo-1",
     name: "Urban Oasis Garden",
-    description: "Dachgarten mit Gießplan und Wochenend-Einsätzen.",
+    description: "Dachgarten mit Giessplan und Wochenend-Einsaetzen.",
     inviteCode: "DEMO01",
     memberCount: 12,
     pendingTodos: 4,
@@ -58,7 +58,7 @@ const MOCK_GROUPS: DashboardGroup[] = [
   {
     id: "demo-2",
     name: "Green Neighbors",
-    description: "Nachbarschaftsbeet für Kräuter und Blühflächen.",
+    description: "Nachbarschaftsbeet fuer Kraeuter und Bluehflaechen.",
     inviteCode: "DEMO02",
     memberCount: 8,
     pendingTodos: 2,
@@ -68,7 +68,7 @@ const MOCK_GROUPS: DashboardGroup[] = [
   {
     id: "demo-3",
     name: "Community Orchard",
-    description: "Obstbäume, Schnitt-Erinnerungen und Ernteplanung.",
+    description: "Obstbaeume, Schnitt-Erinnerungen und Ernteplanung.",
     inviteCode: "DEMO03",
     memberCount: 25,
     pendingTodos: 7,
@@ -77,21 +77,7 @@ const MOCK_GROUPS: DashboardGroup[] = [
   },
 ];
 
-const GROUP_PALETTES = [
-  { soft: "#eaf3ee", accent: "#2d6147" },
-  { soft: "#fdf3e3", accent: "#c4861a" },
-  { soft: "#eeebf5", accent: "#6b4d8a" },
-  { soft: "#fde8e8", accent: "#b03a3a" },
-  { soft: "#e5eefb", accent: "#3a65b0" },
-];
-
-function getPaletteForName(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return GROUP_PALETTES[Math.abs(hash) % GROUP_PALETTES.length];
-}
-
-function PremiumGroupCard({
+function GroupCard({
   name,
   description,
   memberCount,
@@ -110,7 +96,6 @@ function PremiumGroupCard({
   onClick?: () => void;
   index?: number;
 }) {
-  const palette = getPaletteForName(name);
   const initial = name.charAt(0).toUpperCase();
   const total = pendingTodos + completedTodos;
   const progress = total > 0 ? Math.round((completedTodos / total) * 100) : 0;
@@ -118,125 +103,137 @@ function PremiumGroupCard({
   return (
     <motion.button
       onClick={onClick}
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.07, ease: [0.16, 1, 0.3, 1] }}
-      whileTap={{ scale: 0.983 }}
-      className="w-full text-left"
+      transition={{ duration: 0.5, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
+      whileTap={{ scale: 0.98 }}
+      className="w-full text-left group"
       style={{ WebkitTapHighlightColor: "transparent" }}
     >
       <div
-        className="relative overflow-hidden rounded-[24px]"
+        className="relative overflow-hidden rounded-2xl transition-all duration-200"
         style={{
-          background: "var(--color-panel)",
-          border: "1px solid var(--color-border)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.055)",
+          background: "#0a0a0a",
+          border: "1px solid rgba(255,255,255,0.06)",
+          boxShadow: "0 0 0 1px rgba(255,255,255,0.03), 0 1px 2px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.2)",
         }}
       >
-        {/* Top accent line */}
-        <div className="h-[2.5px] w-full" style={{ background: palette.accent, opacity: 0.65 }} />
+        <div
+          className="absolute inset-x-0 top-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)" }}
+        />
 
-        <div className="px-5 pt-4 pb-5">
-          {/* Top row: avatar + badge + chevron */}
-          <div className="flex items-start justify-between gap-3 mb-3.5">
+        <div className="px-5 py-5">
+          <div className="flex items-start justify-between mb-4">
             <div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] text-[18px] font-bold"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[15px] font-semibold"
               style={{
-                background: palette.soft,
-                color: palette.accent,
-                fontFamily: "var(--font-instrument-serif)",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                color: "#ffffff",
+                letterSpacing: "-0.02em",
               }}
             >
               {initial}
             </div>
 
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2">
               {role === "owner" && (
                 <span
-                  className="flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[10px] font-bold uppercase tracking-wider"
-                  style={{ background: palette.soft, color: palette.accent }}
+                  className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.5)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
                 >
                   <Crown size={8} />
                   Leitung
                 </span>
               )}
               <div
-                className="flex h-6 w-6 items-center justify-center rounded-full"
-                style={{ background: "var(--color-canvas-alt)" }}
+                className="flex h-7 w-7 items-center justify-center rounded-full opacity-40 group-hover:opacity-70 transition-opacity"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
               >
-                <ChevronRight size={11} style={{ color: "var(--color-subtle)" }} />
+                <ArrowRight size={11} style={{ color: "#fff" }} />
               </div>
             </div>
           </div>
 
-          {/* Name */}
           <h3
-            className="text-[17px] leading-tight tracking-tight mb-1"
-            style={{
-              color: "var(--color-foreground)",
-              fontFamily: "var(--font-instrument-serif)",
-              fontWeight: 400,
-            }}
+            className="text-[16px] font-semibold leading-tight mb-1.5"
+            style={{ color: "#ffffff", letterSpacing: "-0.02em" }}
           >
             {name}
           </h3>
 
-          {/* Description */}
           {description && (
             <p
               className="text-[13px] leading-relaxed line-clamp-2 mb-4"
-              style={{ color: "var(--color-muted)" }}
+              style={{ color: "rgba(255,255,255,0.4)" }}
             >
               {description}
             </p>
           )}
 
-          {/* Footer */}
-          <div className="flex items-center justify-between gap-3 mt-3">
+          <div
+            className="flex items-center justify-between pt-3.5"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+          >
             <div className="flex items-center gap-3">
               <span
                 className="flex items-center gap-1.5 text-[12px] font-medium"
-                style={{ color: "var(--color-subtle)" }}
+                style={{ color: "rgba(255,255,255,0.3)" }}
               >
-                <Users size={11} strokeWidth={2} />
+                <Users size={11} strokeWidth={1.8} />
                 {memberCount}
               </span>
 
               {pendingTodos > 0 ? (
                 <span
-                  className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
-                  style={{ background: "var(--color-warning-soft)", color: "var(--color-warning)" }}
+                  className="rounded-full px-2.5 py-[3px] text-[11px] font-medium"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.5)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
                 >
                   {pendingTodos} offen
                 </span>
               ) : total > 0 ? (
                 <span
-                  className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
-                  style={{ background: "var(--color-success-soft)", color: "var(--color-success)" }}
+                  className="rounded-full px-2.5 py-[3px] text-[11px] font-medium"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.4)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
                 >
-                  ✓ Erledigt
+                  Erledigt
                 </span>
               ) : null}
             </div>
 
-            {/* Progress bar */}
             {total > 0 && (
               <div className="flex items-center gap-2 shrink-0">
                 <div
-                  className="h-1 w-14 overflow-hidden rounded-full"
-                  style={{ background: "var(--color-canvas-alt)" }}
+                  className="h-[2px] w-16 overflow-hidden rounded-full"
+                  style={{ background: "rgba(255,255,255,0.06)" }}
                 >
                   <motion.div
                     className="h-full rounded-full"
-                    style={{ background: palette.accent }}
+                    style={{ background: "rgba(255,255,255,0.3)" }}
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.9, delay: index * 0.07 + 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: 1, delay: index * 0.06 + 0.4, ease: [0.16, 1, 0.3, 1] }}
                   />
                 </div>
                 <span
                   className="text-[11px] font-medium tabular-nums"
-                  style={{ color: "var(--color-subtle)" }}
+                  style={{ color: "rgba(255,255,255,0.35)" }}
                 >
                   {progress}%
                 </span>
@@ -349,7 +346,7 @@ function DashboardContent() {
         setGroups(MOCK_GROUPS);
         setUserProfile({
           id: "demo",
-          username: "Gärtner.Pro",
+          username: "Gaertner.Pro",
           first_name: "Demo",
           last_name: "User",
           avatar_url: null,
@@ -385,63 +382,61 @@ function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--color-canvas)" }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.4, ease: "linear" }}>
-          <Leaf size={22} style={{ color: "var(--color-brand)" }} strokeWidth={1.5} />
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "#000" }}>
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}>
+          <Leaf size={18} style={{ color: "rgba(255,255,255,0.3)" }} strokeWidth={1.5} />
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen pb-36" style={{ background: "var(--color-canvas)" }}>
-
-      {/* ── Header ─────────────────────────────────────────────── */}
+    <div className="relative min-h-screen pb-36" style={{ background: "#000000" }}>
       <header
-        className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5"
+        className="sticky top-0 z-30 flex items-center justify-between px-5 py-3"
         style={{
-          background: "rgba(245,240,232,0.9)",
-          backdropFilter: "blur(32px)",
-          WebkitBackdropFilter: "blur(32px)",
+          background: "rgba(0,0,0,0.75)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
         }}
       >
         <motion.div
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="flex items-center gap-2"
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="flex items-center gap-2.5"
         >
           <div
-            className="flex h-7 w-7 items-center justify-center rounded-[9px] text-white"
-            style={{ background: "var(--color-brand)" }}
+            className="flex h-7 w-7 items-center justify-center rounded-lg"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
           >
-            <Leaf size={13} strokeWidth={2} />
+            <Leaf size={13} style={{ color: "rgba(255,255,255,0.6)" }} strokeWidth={1.8} />
           </div>
           <span
-            className="text-[15px] tracking-tight"
-            style={{
-              color: "var(--color-foreground)",
-              fontFamily: "var(--font-instrument-serif)",
-              letterSpacing: "-0.01em",
-            }}
+            className="text-[15px] font-semibold"
+            style={{ color: "#ffffff", letterSpacing: "-0.02em" }}
           >
             Garden Groups
           </span>
         </motion.div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <motion.button
             whileTap={{ scale: 0.88 }}
             onClick={() => setIsSearchOpen(!isSearchOpen)}
             className="flex h-8 w-8 items-center justify-center rounded-full"
-            style={{ color: "var(--color-muted)" }}
+            style={{ color: "rgba(255,255,255,0.4)" }}
           >
-            {isSearchOpen ? <X size={16} strokeWidth={2} /> : <Search size={16} strokeWidth={1.8} />}
+            {isSearchOpen ? <X size={15} strokeWidth={2} /> : <Search size={15} strokeWidth={1.8} />}
           </motion.button>
 
           <div className="relative">
             <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowProfileMenu(!showProfileMenu)}>
-              <Avatar name={profileDisplayName} className="h-7 w-7 text-[11px]" />
+              <Avatar name={profileDisplayName} className="h-7 w-7 text-[10px]" />
             </motion.button>
 
             <AnimatePresence>
@@ -458,25 +453,25 @@ function DashboardContent() {
                     initial={{ opacity: 0, scale: 0.9, y: -4 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 32 }}
-                    className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-2xl"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl"
                     style={{
-                      background: "var(--color-panel)",
-                      border: "1px solid var(--color-border)",
+                      background: "#0a0a0a",
+                      border: "1px solid rgba(255,255,255,0.08)",
                       boxShadow: "var(--shadow-modal)",
                     }}
                   >
-                    <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--color-border)" }}>
-                      <p className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>
+                    <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      <p className="text-[13px] font-semibold" style={{ color: "#ffffff" }}>
                         {profileDisplayName}
                       </p>
                     </div>
                     <button
                       onClick={handleSignOut}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium"
-                      style={{ color: "var(--color-danger)" }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-medium"
+                      style={{ color: "#dc2626" }}
                     >
-                      <LogOut size={14} />
+                      <LogOut size={13} />
                       Abmelden
                     </button>
                   </motion.div>
@@ -487,7 +482,6 @@ function DashboardContent() {
         </div>
       </header>
 
-      {/* ── Search bar ─────────────────────────────────────────── */}
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div
@@ -495,32 +489,35 @@ function DashboardContent() {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="overflow-hidden sticky top-[52px] z-20"
+            className="overflow-hidden sticky top-[49px] z-20"
             style={{
-              background: "rgba(245,240,232,0.96)",
+              background: "rgba(0,0,0,0.9)",
               backdropFilter: "blur(20px)",
               WebkitBackdropFilter: "blur(20px)",
-              borderBottom: "1px solid var(--color-border)",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
             }}
           >
             <div className="px-5 py-2.5">
               <div
-                className="flex items-center gap-2 rounded-[14px] px-4 py-2.5"
-                style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)" }}
+                className="flex items-center gap-2.5 rounded-xl px-4 py-2.5"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
               >
-                <Search size={13} style={{ color: "var(--color-subtle)" }} />
+                <Search size={13} style={{ color: "rgba(255,255,255,0.25)" }} />
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Gruppe suchen…"
+                  placeholder="Gruppe suchen..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-transparent text-[14px] focus:outline-none"
-                  style={{ color: "var(--color-foreground)" }}
+                  className="flex-1 bg-transparent text-[14px] focus:outline-none placeholder:text-white/20"
+                  style={{ color: "#ffffff" }}
                 />
                 {searchQuery && (
                   <button onClick={() => setSearchQuery("")}>
-                    <X size={13} style={{ color: "var(--color-subtle)" }} />
+                    <X size={13} style={{ color: "rgba(255,255,255,0.25)" }} />
                   </button>
                 )}
               </div>
@@ -530,44 +527,40 @@ function DashboardContent() {
       </AnimatePresence>
 
       <main className="px-5 overflow-x-hidden">
-
-        {/* ── Hero Greeting ───────────────────────────────────── */}
         <motion.div
-          className="pt-8 pb-7"
-          initial={{ opacity: 0, y: 14 }}
+          className="pt-10 pb-9"
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/* Eyebrow */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-px w-8" style={{ background: "var(--color-brand)", opacity: 0.45 }} />
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="h-px w-5" style={{ background: "rgba(255,255,255,0.2)" }} />
             <span
-              className="text-[10px] font-bold uppercase tracking-[0.18em]"
-              style={{ color: "var(--color-brand)" }}
+              className="text-[10px] font-semibold uppercase tracking-[0.2em]"
+              style={{ color: "rgba(255,255,255,0.35)" }}
             >
               Dein Garten
             </span>
           </div>
 
-          {/* Main heading */}
           <h1
             style={{
-              fontFamily: "var(--font-instrument-serif)",
               fontSize: "clamp(2.5rem, 11vw, 3.4rem)",
-              lineHeight: 1.0,
-              letterSpacing: "-0.03em",
-              color: "var(--color-foreground)",
+              fontWeight: 800,
+              lineHeight: 0.94,
+              letterSpacing: "-0.04em",
+              color: "#ffffff",
             }}
           >
             Hallo,{" "}
-            <span style={{ fontStyle: "italic", color: "var(--color-brand)" }}>
+            <span style={{ color: "rgba(255,255,255,0.4)", display: "inline-block" }}>
               {greetingName}
             </span>
           </h1>
 
           <p
-            className="mt-3 text-[14px] leading-relaxed"
-            style={{ color: "var(--color-muted)", maxWidth: "28ch" }}
+            className="mt-4 text-[14px] leading-relaxed"
+            style={{ color: "rgba(255,255,255,0.3)", maxWidth: "26ch" }}
           >
             {groups.length > 0
               ? `${groups.length} ${groups.length === 1 ? "Gruppe" : "Gruppen"} aktiv · ${totalPendingTodos} offen`
@@ -575,96 +568,90 @@ function DashboardContent() {
           </p>
         </motion.div>
 
-        {/* ── Stats Strip ─────────────────────────────────────── */}
         {groups.length > 0 && (
           <motion.div
-            className="mb-8"
+            className="mb-8 grid grid-cols-3 gap-2"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.45, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div
-              className="flex rounded-[20px] overflow-hidden"
-              style={{
-                background: "var(--color-panel)",
-                border: "1px solid var(--color-border)",
-                boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
-              }}
-            >
-              {[
-                { label: "Gruppen", value: groups.length, color: "var(--color-brand)" },
-                { label: "Offen", value: totalPendingTodos, color: "var(--color-warning)" },
-                { label: "Erledigt", value: totalCompletedTodos, color: "var(--color-success)" },
-              ].map(({ label, value, color }, i) => (
-                <div
-                  key={label}
-                  className="flex-1 px-3 py-4 text-center"
-                  style={{ borderRight: i < 2 ? "1px solid var(--color-border)" : undefined }}
+            {[
+              { label: "Gruppen", value: groups.length },
+              { label: "Offen", value: totalPendingTodos },
+              { label: "Erledigt", value: totalCompletedTodos },
+            ].map(({ label, value }, i) => (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 + i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                className="rounded-2xl px-3 py-4 text-center"
+                style={{
+                  background: "#0a0a0a",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  boxShadow: "0 0 0 1px rgba(255,255,255,0.02), 0 2px 8px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.2)",
+                }}
+              >
+                <p
+                  className="text-[28px] leading-none font-bold tabular-nums"
+                  style={{ color: "#ffffff", letterSpacing: "-0.04em" }}
                 >
-                  <p
-                    className="text-[28px] leading-none tabular-nums"
-                    style={{
-                      color,
-                      fontFamily: "var(--font-instrument-serif)",
-                      letterSpacing: "-0.04em",
-                    }}
-                  >
-                    {value}
-                  </p>
-                  <p
-                    className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.14em]"
-                    style={{ color: "var(--color-subtle)" }}
-                  >
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
+                  {value}
+                </p>
+                <p
+                  className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  style={{ color: "rgba(255,255,255,0.25)" }}
+                >
+                  {label}
+                </p>
+              </motion.div>
+            ))}
           </motion.div>
         )}
 
-        {/* ── Section label ───────────────────────────────────── */}
         <motion.div
           className="flex items-center gap-3 mb-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.18 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
         >
           <span
-            className="text-[10px] font-bold uppercase tracking-[0.18em] shrink-0"
-            style={{ color: "var(--color-subtle)" }}
+            className="text-[10px] font-semibold uppercase tracking-[0.18em] shrink-0"
+            style={{ color: "rgba(255,255,255,0.2)" }}
           >
             {searchQuery ? `Ergebnisse (${filteredGroups.length})` : "Deine Gruppen"}
           </span>
-          <div className="h-px flex-1" style={{ background: "var(--color-border)" }} />
+          <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.05)" }} />
         </motion.div>
 
-        {/* ── Groups ──────────────────────────────────────────── */}
         {filteredGroups.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex flex-col items-center justify-center rounded-[28px] py-16 text-center"
+            className="mt-4 flex flex-col items-center justify-center rounded-2xl py-16 text-center"
             style={{
-              background: "var(--color-panel)",
-              border: "1.5px dashed var(--color-border)",
+              background: "#0a0a0a",
+              border: "1px dashed rgba(255,255,255,0.08)",
             }}
           >
             <div
-              className="mb-5 flex h-16 w-16 items-center justify-center rounded-[22px]"
-              style={{ background: "var(--color-brand-soft)", color: "var(--color-brand)" }}
+              className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
             >
-              <Sprout size={28} strokeWidth={1.5} />
+              <Sprout size={24} style={{ color: "rgba(255,255,255,0.3)" }} strokeWidth={1.5} />
             </div>
             <h3
-              className="text-[18px]"
-              style={{ color: "var(--color-foreground)", fontFamily: "var(--font-instrument-serif)" }}
+              className="text-[17px] font-bold"
+              style={{ color: "#ffffff", letterSpacing: "-0.02em" }}
             >
               {searchQuery ? "Keine Treffer" : "Noch keine Gruppen"}
             </h3>
             <p
               className="mt-2 text-[13px] max-w-[200px] leading-relaxed"
-              style={{ color: "var(--color-muted)" }}
+              style={{ color: "rgba(255,255,255,0.3)" }}
             >
               {searchQuery
                 ? "Versuche einen anderen Begriff"
@@ -675,7 +662,7 @@ function DashboardContent() {
           <div className="space-y-3">
             <AnimatePresence>
               {filteredGroups.map((group, i) => (
-                <PremiumGroupCard
+                <GroupCard
                   key={group.id}
                   name={group.name}
                   description={group.description}
@@ -692,17 +679,17 @@ function DashboardContent() {
         )}
       </main>
 
-      {/* ── FAB ─────────────────────────────────────────────────── */}
       <motion.button
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 500, damping: 26, delay: 0.4 }}
-        whileTap={{ scale: 0.9 }}
+        transition={{ type: "spring", stiffness: 500, damping: 24, delay: 0.4 }}
+        whileTap={{ scale: 0.88 }}
         onClick={() => setIsCreateModalOpen(true)}
-        className="fixed bottom-28 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full text-white"
+        className="fixed bottom-28 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full"
         style={{
-          background: "var(--color-brand)",
-          boxShadow: "0 4px 24px rgba(45,97,71,0.38), 0 1px 6px rgba(45,97,71,0.18)",
+          background: "#ffffff",
+          color: "#000000",
+          boxShadow: "0 0 0 1px rgba(255,255,255,0.1), 0 4px 12px rgba(0,0,0,0.5), 0 12px 40px rgba(0,0,0,0.3), 0 0 60px rgba(255,255,255,0.06)",
         }}
       >
         <Plus size={22} strokeWidth={2.5} />
@@ -728,9 +715,9 @@ export default function DashboardPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--color-canvas)" }}>
-          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.4, ease: "linear" }}>
-            <Leaf size={22} style={{ color: "var(--color-brand)" }} strokeWidth={1.5} />
+        <div className="flex min-h-screen items-center justify-center" style={{ background: "#000" }}>
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}>
+            <Leaf size={18} style={{ color: "rgba(255,255,255,0.3)" }} strokeWidth={1.5} />
           </motion.div>
         </div>
       }
