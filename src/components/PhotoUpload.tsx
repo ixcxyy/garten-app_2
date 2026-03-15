@@ -85,7 +85,10 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
 
       const { error: uploadError } = await supabase.storage
         .from('todo-photos')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       clearInterval(progressInterval);
 

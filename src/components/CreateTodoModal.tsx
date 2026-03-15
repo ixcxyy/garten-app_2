@@ -59,7 +59,7 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" data-modal-open="true">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}

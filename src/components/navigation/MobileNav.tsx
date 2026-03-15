@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,12 +14,26 @@ const navItems = [
 export default function MobileNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const [isHidden, setIsHidden] = React.useState(false);
+
+  React.useEffect(() => {
+    // Listen for modal open/close events or check body class
+    const observer = new MutationObserver(() => {
+      const isModalOpen = document.body.style.overflow === 'hidden' || 
+                         document.querySelector('[data-modal-open="true"]');
+      setIsHidden(!!isModalOpen);
+    });
+
+    observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+    return () => observer.disconnect();
+  }, []);
 
   // Hide nav on auth pages and landing
   if (
     pathname === "/" ||
     pathname === "/login" ||
-    pathname === "/register"
+    pathname === "/register" ||
+    isHidden
   )
     return null;
 

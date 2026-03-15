@@ -10,6 +10,8 @@ export type NotificationPayload = {
   tag?: string;
 };
 
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
+
 /**
  * Registers the service worker, requests notification permission,
  * and subscribes to Supabase Realtime so that when any group member
@@ -163,11 +165,46 @@ export function useNotifications(groupId?: string, currentUserId?: string) {
 
     void subscribe();
     void checkReminders();
+    
+    if (Notification.permission === 'granted') {
+      void subscribeToPush();
+    }
 
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
   }, [groupId, currentUserId, requestPermission, sendLocalNotification]);
 
-  return { requestPermission, sendLocalNotification };
+  const subscribeToPush = useCallback(async () => {
+    try {
+      if (!currentUserId || typeof window === 'undefined') return;
+      
+      const sw = await navigator.serviceWorker.ready;
+      const sub = await sw.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: VAPID_PUBLIC_KEY,
+      });
+
+      const { endpoint, keys } = sub.toJSON();
+      if (!endpoint || !keys) return;
+
+      const { error } = await supabase
+        .from('push_subscriptions')
+        .insert([{
+          user_id: currentUserId,
+          endpoint,
+          p256dh: keys.p256dh,
+          auth: keys.auth,
+        }]);
+
+      if (error) {
+        // Handle duplicate subscription (user already subscribed)
+        if (error.code !== '23505') throw error;
+      }
+    } catch (error) {
+      console.warn('Push subscription failed:', error);
+    }
+  }, [currentUserId]);
+
+  return { requestPermission, sendLocalNotification, subscribeToPush };
 }
