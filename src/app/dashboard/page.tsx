@@ -3,33 +3,24 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Bell,
-  Copy,
+  CheckCheck,
   Leaf,
   ListTodo,
   Loader2,
   Plus,
   Search,
-  ShieldCheck,
   Sprout,
-  UserPlus,
+  Users,
   X,
+  LogOut,
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import GroupCard from "@/components/dashboard/GroupCard";
-import { Avatar, Button } from "@/components/ui";
-import { supabase } from "@/lib/supabase";
+import { Avatar } from "@/components/ui";
+import { supabase, signOut } from "@/lib/supabase";
 import { UserProfile } from "@/lib/types";
-import Link from "next/link";
-import {
-  cn,
-  getProfileDisplayName,
-  getProfileGreetingName,
-  getProfileSecondaryName,
-} from "@/lib/utils";
+import { cn, getProfileDisplayName, getProfileGreetingName } from "@/lib/utils";
 import { CreateGroupModal } from "@/components/dashboard/CreateGroupModal";
-import { ProfileDropdown } from "@/components/dashboard/ProfileDropdown";
-import { NotificationsPeek } from "@/components/dashboard/NotificationsPeek";
 
 type DashboardGroup = {
   id: string;
@@ -38,6 +29,7 @@ type DashboardGroup = {
   inviteCode: string;
   memberCount: number;
   pendingTodos: number;
+  completedTodos: number;
   role: "owner" | "member";
 };
 
@@ -58,28 +50,31 @@ const MOCK_GROUPS: DashboardGroup[] = [
   {
     id: "demo-1",
     name: "Urban Oasis Garden",
-    description: "Eine Dachgarten-Gruppe mit Gießplan, Kompost-Updates und Wochenend-Einsätzen.",
+    description: "Dachgarten mit Gießplan und Wochenend-Einsätzen.",
     inviteCode: "DEMO01",
     memberCount: 12,
     pendingTodos: 4,
+    completedTodos: 8,
     role: "owner",
   },
   {
     id: "demo-2",
     name: "Green Neighbors",
-    description: "Nachbarschaftsbeet für Kräuter, Blühflächen und gemeinsame Saison-Checklisten.",
+    description: "Nachbarschaftsbeet für Kräuter und Blühflächen.",
     inviteCode: "DEMO02",
     memberCount: 8,
     pendingTodos: 2,
+    completedTodos: 5,
     role: "member",
   },
   {
     id: "demo-3",
     name: "Community Orchard",
-    description: "Obstbäume, Schnitt-Erinnerungen und Ernteplanung für eine geteilte Streuobstwiese.",
+    description: "Obstbäume, Schnitt-Erinnerungen und Ernteplanung.",
     inviteCode: "DEMO03",
     memberCount: 25,
     pendingTodos: 7,
+    completedTodos: 12,
     role: "member",
   },
 ];
@@ -87,84 +82,53 @@ const MOCK_GROUPS: DashboardGroup[] = [
 function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const isDemoMode = searchParams.get("mode") === "demo" || !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
-  
+  const isDemoMode =
+    searchParams.get("mode") === "demo" ||
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
+
   const [groups, setGroups] = useState<DashboardGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  
-  // UI states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchActive, setIsSearchActive] = useState(false);
-  const [inviteFeedback, setInviteFeedback] = useState<string | null>(null);
-
-  const fetchNotifications = useCallback(async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("is_read", false);
-      
-      if (!error && data) {
-        setUnreadCount(data.length);
-      }
-    } catch (err) {
-      console.error("Error fetching notifications:", err);
-    }
-  }, []);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user && !isDemoMode) {
         router.push("/login");
         return;
       }
 
-      if (user) {
-        void fetchNotifications(user.id);
-
+      if (user && !isDemoMode) {
         const { data: profile } = await supabase
           .from("user_profiles")
           .select("*")
           .eq("id", user.id)
           .maybeSingle();
-        
+
         setUserProfile(profile);
 
         const { data: userGroups, error: userGroupsError } = await supabase
           .from("group_members")
-          .select(`
-            group_id,
-            role,
-            groups (
-              id,
-              name,
-              description,
-              invite_code
-            )
-          `)
+          .select(`group_id, role, groups (id, name, description, invite_code)`)
           .eq("user_id", user.id);
 
-        if (userGroupsError) {
-          throw userGroupsError;
-        }
+        if (userGroupsError) throw userGroupsError;
 
         const normalizedGroups = ((userGroups ?? []) as GroupMembershipRow[])
           .map((membership) => {
-            const group = Array.isArray(membership.groups) ? membership.groups[0] : membership.groups;
-
-            if (!group?.id) {
-              return null;
-            }
-
+            const group = Array.isArray(membership.groups)
+              ? membership.groups[0]
+              : membership.groups;
+            if (!group?.id) return null;
             return {
               id: group.id,
               name: group.name,
@@ -172,6 +136,7 @@ function DashboardContent() {
               inviteCode: group.invite_code,
               memberCount: 1,
               pendingTodos: 0,
+              completedTodos: 0,
               role: membership.role === "owner" ? "owner" : "member",
             } satisfies DashboardGroup;
           })
@@ -182,35 +147,32 @@ function DashboardContent() {
           return;
         }
 
-        const groupIds = normalizedGroups.map((group) => group.id);
-        const [{ data: memberRows, error: memberRowsError }, { data: todoRows, error: todoRowsError }] = await Promise.all([
+        const groupIds = normalizedGroups.map((g) => g.id);
+        const [{ data: memberRows }, { data: pendingRows }, { data: doneRows }] = await Promise.all([
           supabase.from("group_members").select("group_id").in("group_id", groupIds),
           supabase.from("todos").select("group_id").in("group_id", groupIds).eq("status", "pending"),
+          supabase.from("todos").select("group_id").in("group_id", groupIds).eq("status", "completed"),
         ]);
-
-        if (memberRowsError) {
-          throw memberRowsError;
-        }
-
-        if (todoRowsError) {
-          throw todoRowsError;
-        }
 
         const memberCounts = (memberRows ?? []).reduce<Record<string, number>>((acc, row) => {
           acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
           return acc;
         }, {});
-
-        const pendingCounts = (todoRows ?? []).reduce<Record<string, number>>((acc, row) => {
+        const pendingCounts = (pendingRows ?? []).reduce<Record<string, number>>((acc, row) => {
+          acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
+          return acc;
+        }, {});
+        const doneCounts = (doneRows ?? []).reduce<Record<string, number>>((acc, row) => {
           acc[row.group_id] = (acc[row.group_id] ?? 0) + 1;
           return acc;
         }, {});
 
         setGroups(
-          normalizedGroups.map((group) => ({
-            ...group,
-            memberCount: memberCounts[group.id] ?? group.memberCount,
-            pendingTodos: pendingCounts[group.id] ?? 0,
+          normalizedGroups.map((g) => ({
+            ...g,
+            memberCount: memberCounts[g.id] ?? 1,
+            pendingTodos: pendingCounts[g.id] ?? 0,
+            completedTodos: doneCounts[g.id] ?? 0,
           })),
         );
       } else if (isDemoMode) {
@@ -221,7 +183,7 @@ function DashboardContent() {
           first_name: "Demo",
           last_name: "User",
           avatar_url: null,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         } as UserProfile);
       }
     } catch (error) {
@@ -229,383 +191,235 @@ function DashboardContent() {
     } finally {
       setLoading(false);
     }
-  }, [fetchNotifications, isDemoMode, router]);
-
-  const filteredGroups = groups.filter((group) =>
-    group.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (group.description ?? "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const profileDisplayName = getProfileDisplayName(userProfile);
-  const profileSecondaryName = getProfileSecondaryName(userProfile);
-  const greetingName = getProfileGreetingName(userProfile);
-  const totalPendingTodos = groups.reduce((sum, group) => sum + group.pendingTodos, 0);
-  const totalMembers = groups.reduce((sum, group) => sum + group.memberCount, 0);
-  const ownerGroups = groups.filter((group) => group.role === "owner").length;
-
-  const handleInviteAction = useCallback(async () => {
-    if (!groups.length) {
-      setInviteFeedback("Erstelle zuerst eine Gruppe. Danach kannst du Einladungslinks direkt teilen.");
-      setIsCreateModalOpen(true);
-      return;
-    }
-
-    const group = groups[0];
-    const inviteLink = `${window.location.origin}/invite/${group.inviteCode}`;
-
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setInviteFeedback(`Einladungslink für "${group.name}" wurde kopiert.`);
-    } catch (error) {
-      console.error("Error copying invite link:", error);
-      setInviteFeedback("Der Einladungslink konnte nicht kopiert werden.");
-    }
-
-    window.setTimeout(() => setInviteFeedback(null), 2800);
-  }, [groups]);
+  }, [isDemoMode, router]);
 
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
 
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/login");
+  };
+
+  const filteredGroups = groups.filter(
+    (g) =>
+      g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (g.description ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const profileDisplayName = getProfileDisplayName(userProfile);
+  const greetingName = getProfileGreetingName(userProfile);
+  const totalPendingTodos = groups.reduce((s, g) => s + g.pendingTodos, 0);
+  const totalCompletedTodos = groups.reduce((s, g) => s + g.completedTodos, 0);
+
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-[var(--color-brand)]" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)]">
+        <Loader2 className="h-7 w-7 animate-spin text-[var(--color-brand)]" />
       </div>
     );
   }
 
   return (
-    <div className="section-shell py-6 sm:py-10 relative">
-      <div className="glass-panel overflow-hidden rounded-[40px] shadow-card">
-        <header className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-6 sm:px-10">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[var(--color-brand)] text-white shadow-soft transition-transform hover:scale-105 active:scale-95">
-              <Leaf size={22} />
-            </Link>
-            <div className={cn(isSearchActive ? "hidden sm:block" : "block")}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-brand)]">Dashboard</p>
-              <h1 className="text-xl font-extrabold tracking-tight">Meine Gruppen</h1>
+    <div className="relative min-h-screen bg-[var(--color-canvas)] pb-28">
+      {/* Top bar */}
+      <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-white/90 backdrop-blur-xl">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[var(--color-brand)] text-white">
+              <Leaf size={15} />
             </div>
+            <span className="text-[15px] font-bold tracking-tight text-[var(--color-foreground)]">
+              Garden Groups
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "flex items-center gap-2 rounded-full transition-all duration-300",
-              isSearchActive ? "w-48 sm:w-64 bg-[var(--color-canvas)] px-3 py-1.5" : "w-10 overflow-hidden"
-            )}>
-              <button 
-                onClick={() => setIsSearchActive(!isSearchActive)}
-                className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all hover:bg-[var(--color-brand-soft)] hover:text-[var(--color-brand)]",
-                  !isSearchActive && "bg-[var(--color-canvas)] text-[var(--color-muted)]"
-                )}
-              >
-                <Search size={18} strokeWidth={isSearchActive ? 3 : 2.5} />
-              </button>
-              {isSearchActive && (
-                <>
-                  <input 
-                    autoFocus
-                    type="text"
-                    placeholder="Suchen..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-transparent text-sm font-bold placeholder:text-[var(--color-subtle)] focus:outline-none"
-                  />
-                  {searchQuery ? (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-subtle)] transition-colors hover:bg-white hover:text-[var(--color-foreground)]"
-                    >
-                      <X size={14} strokeWidth={2.5} />
-                    </button>
-                  ) : null}
-                </>
-              )}
-            </div>
-
-            <div className="relative">
-              <button 
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full transition-all hover:bg-[var(--color-brand-soft)] hover:text-[var(--color-brand)] relative",
-                  isNotificationsOpen ? "bg-[var(--color-brand-soft)] text-[var(--color-brand)]" : "bg-[var(--color-canvas)] text-[var(--color-muted)]"
-                )}
-              >
-                <Bell size={18} strokeWidth={2.5} />
-                {unreadCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white ring-2 ring-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-              <NotificationsPeek 
-                isOpen={isNotificationsOpen} 
-                onClose={() => {
-                  setIsNotificationsOpen(false);
-                  if (userProfile?.id) fetchNotifications(userProfile.id);
-                }} 
-              />
-            </div>
-
-            <div className="relative">
-              <button 
-                onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="transition-transform hover:scale-105 active:scale-95"
-              >
-                <Avatar 
-                  name={profileDisplayName} 
-                  src={userProfile?.avatar_url}
-                  className="h-10 w-10 border-2 border-white shadow-soft" 
-                />
-              </button>
-              <ProfileDropdown 
-                isOpen={isProfileOpen} 
-                onClose={() => setIsProfileOpen(false)}
-                displayName={profileDisplayName}
-                secondaryName={profileSecondaryName}
-                avatarName={profileDisplayName}
-                avatarUrl={userProfile?.avatar_url}
-              />
-            </div>
-          </div>
-        </header>
-
-        <main className="space-y-12 px-6 py-8 sm:px-10 sm:py-12">
-          {isDemoMode && (
-            <div className="rounded-[28px] bg-[var(--color-brand-soft)] p-7 shadow-soft">
-              <div className="flex items-start gap-5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[var(--color-brand)] shadow-soft">
-                  <Leaf size={24} />
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-[16px] font-bold text-[var(--color-brand-strong)]">Demo-Modus</p>
-                  <p className="text-[14px] leading-relaxed text-[var(--color-muted)]">
-                    Du siehst gerade Beispiel-Daten. Verbinde dein Supabase-Projekt, um echte Gruppen zu erstellen.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="relative overflow-hidden rounded-[36px] border border-[var(--color-border)] bg-[radial-gradient(circle_at_top_left,_rgba(47,106,83,0.2),_transparent_45%),linear-gradient(135deg,#ffffff_0%,#f5fbf7_100%)] p-8 shadow-soft sm:p-10"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-[var(--color-canvas)]"
             >
-              <div className="absolute -right-12 top-0 h-40 w-40 rounded-full bg-[var(--color-brand-soft)] blur-3xl" />
-              <div className="relative">
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--color-brand)]">Heute im Beet</p>
-                <h2 className="mt-3 text-[32px] font-extrabold leading-[1.05] tracking-tight text-balance sm:text-[46px]">
-                  Hallo {greetingName}, <br />
-                  was säen wir heute?
-                </h2>
-                <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-[var(--color-muted)] sm:text-[16px]">
-                  {groups.length > 0
-                    ? `Du hast aktuell ${totalPendingTodos} offene Aufgaben in ${groups.length} Gruppen. Teile Einladungslinks, priorisiere Aufgaben und halte deine Garten-Community an einem Ort zusammen.`
-                    : "Starte mit deiner ersten Gartengruppe und sammle Aufgaben, Mitglieder und Einladungen an einem Ort."}
-                </p>
+              {isSearchOpen ? <X size={18} /> : <Search size={18} />}
+            </button>
 
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <Button
-                    variant="secondary"
-                    size="md"
-                    className="gap-2"
-                    onClick={handleInviteAction}
-                  >
-                    {groups.length > 0 ? <Copy size={18} strokeWidth={2.5} /> : <UserPlus size={18} strokeWidth={2.5} />}
-                    {groups.length > 0 ? "Link kopieren" : "Einladen"}
-                  </Button>
-                  <Button
-                    size="md"
-                    className="gap-2"
-                    onClick={() => setIsCreateModalOpen(true)}
-                  >
-                    <Plus size={18} strokeWidth={3} />
-                    Gruppe erstellen
-                  </Button>
-                </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="transition-transform active:scale-95"
+              >
+                <Avatar name={profileDisplayName} className="h-8 w-8 text-xs" />
+              </button>
 
-                <AnimatePresence>
-                  {inviteFeedback ? (
-                    <motion.p
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 8 }}
-                      className="mt-4 inline-flex rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-[var(--color-brand-strong)] shadow-soft"
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowProfileMenu(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: -8 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-[var(--shadow-modal)]"
                     >
-                      {inviteFeedback}
-                    </motion.p>
-                  ) : null}
-                </AnimatePresence>
+                      <div className="border-b border-[var(--color-border)] px-4 py-3">
+                        <p className="text-sm font-semibold text-[var(--color-foreground)]">
+                          {profileDisplayName}
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleSignOut}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-sm text-red-500 transition-colors hover:bg-red-50"
+                      >
+                        <LogOut size={16} />
+                        Abmelden
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+
+        {/* Search bar */}
+        <AnimatePresence>
+          {isSearchOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-t border-[var(--color-border)]"
+            >
+              <div className="px-4 py-2.5">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Gruppe suchen..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl bg-[var(--color-canvas)] px-3 py-2 text-sm text-[var(--color-foreground)] placeholder:text-[var(--color-subtle)] focus:outline-none"
+                />
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
 
-            <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-              {[
-                {
-                  label: "Gruppen",
-                  value: groups.length,
-                  icon: Sprout,
-                  accent: "text-[var(--color-brand)]",
-                  hint: groups.length > 0 ? "Aktive Bereiche" : "Noch kein Beet angelegt",
-                },
-                {
-                  label: "Offene Aufgaben",
-                  value: totalPendingTodos,
-                  icon: ListTodo,
-                  accent: "text-amber-600",
-                  hint: totalPendingTodos > 0 ? "Brauchen Aufmerksamkeit" : "Alles gerade erledigt",
-                },
-                {
-                  label: "Deine Leitung",
-                  value: ownerGroups,
-                  icon: ShieldCheck,
-                  accent: "text-sky-600",
-                  hint: ownerGroups > 0 ? `${totalMembers} Mitglieder insgesamt` : "Noch keine Gruppe geleitet",
-                },
-              ].map((stat, index) => {
-                const Icon = stat.icon;
+      <main className="px-4 pt-5">
+        {/* Greeting + summary */}
+        <div className="mb-5">
+          <h1 className="text-xl font-bold tracking-tight text-[var(--color-foreground)]">
+            Hallo {greetingName} 👋
+          </h1>
+          <p className="mt-0.5 text-sm text-[var(--color-muted)]">
+            {groups.length > 0
+              ? `${groups.length} Gruppen · ${totalPendingTodos} offene Aufgaben`
+              : "Erstelle deine erste Gartengruppe"}
+          </p>
+        </div>
 
-                return (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.08 * index }}
-                    className="rounded-[28px] border border-[var(--color-border)] bg-white/80 p-5 shadow-soft"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-subtle)]">{stat.label}</p>
-                      <div className={cn("flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-canvas)]", stat.accent)}>
-                        <Icon size={18} strokeWidth={2.3} />
-                      </div>
-                    </div>
-                    <p className="mt-5 text-4xl font-extrabold tracking-tight text-[var(--color-foreground)]">{stat.value}</p>
-                    <p className="mt-2 text-sm text-[var(--color-muted)]">{stat.hint}</p>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="space-y-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-subtle)]">Übersicht</p>
-                <h3 className="mt-1 text-2xl font-extrabold tracking-tight text-[var(--color-foreground)]">
-                  {searchQuery ? "Gefilterte Gruppen" : "Deine Gartenbereiche"}
-                </h3>
-                <p className="mt-2 text-sm text-[var(--color-muted)]">
-                  {searchQuery
-                    ? `${filteredGroups.length} Treffer für "${searchQuery}".`
-                    : groups.length > 0
-                      ? `${groups.length} Gruppen mit ${totalPendingTodos} offenen Aufgaben.`
-                      : "Hier erscheinen deine Gruppen, sobald du die erste anlegst oder per Einladung beitrittst."}
-                </p>
+        {/* Stats row */}
+        {groups.length > 0 && (
+          <div className="mb-5 grid grid-cols-3 gap-2.5">
+            {[
+              { icon: Sprout, label: "Gruppen", value: groups.length, color: "text-[var(--color-brand)]", bg: "bg-[var(--color-brand-soft)]" },
+              { icon: ListTodo, label: "Offen", value: totalPendingTodos, color: "text-amber-600", bg: "bg-amber-50" },
+              { icon: CheckCheck, label: "Erledigt", value: totalCompletedTodos, color: "text-emerald-600", bg: "bg-emerald-50" },
+            ].map(({ icon: Icon, label, value, color, bg }) => (
+              <div key={label} className="rounded-2xl border border-[var(--color-border)] bg-white px-3 py-3 shadow-[var(--shadow-soft)]">
+                <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-xl ${bg} ${color}`}>
+                  <Icon size={15} strokeWidth={2.3} />
+                </div>
+                <p className="text-[22px] font-bold tracking-tight text-[var(--color-foreground)]">{value}</p>
+                <p className="text-[11px] text-[var(--color-subtle)]">{label}</p>
               </div>
-              {searchQuery ? (
-                <Button variant="ghost" size="sm" className="gap-2 self-start sm:self-auto" onClick={() => setSearchQuery("")}>
-                  <X size={16} strokeWidth={2.5} />
-                  Filter löschen
-                </Button>
-              ) : null}
+            ))}
+          </div>
+        )}
+
+        {/* Groups section */}
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[13px] font-bold uppercase tracking-[0.12em] text-[var(--color-subtle)]">
+            {searchQuery ? `Ergebnisse (${filteredGroups.length})` : "Deine Gruppen"}
+          </h2>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="text-xs text-[var(--color-brand)]"
+            >
+              Leeren
+            </button>
+          )}
+        </div>
+
+        {filteredGroups.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-8 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[var(--color-border)] bg-white/60 py-14 text-center"
+          >
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-brand-soft)] text-[var(--color-brand)]">
+              <Sprout size={26} />
             </div>
+            <h3 className="text-base font-bold text-[var(--color-foreground)]">
+              {searchQuery ? "Keine Treffer" : "Noch keine Gruppen"}
+            </h3>
+            <p className="mt-1.5 max-w-[220px] text-sm text-[var(--color-muted)]">
+              {searchQuery
+                ? "Versuche einen anderen Begriff"
+                : "Tippe auf + um deine erste Gruppe zu erstellen"}
+            </p>
+          </motion.div>
+        ) : (
+          <div className="space-y-3">
+            <AnimatePresence>
+              {filteredGroups.map((group, index) => (
+                <motion.div
+                  key={group.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  transition={{ duration: 0.25, delay: index * 0.04 }}
+                  onClick={() => router.push(`/group/${group.id}`)}
+                  className="cursor-pointer"
+                >
+                  <GroupCard
+                    name={group.name}
+                    description={group.description}
+                    memberCount={group.memberCount}
+                    pendingTodos={group.pendingTodos}
+                    role={group.role}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </main>
 
-            {filteredGroups.length === 0 ? (
-              searchQuery ? (
-                <div className="flex flex-col items-center justify-center rounded-[36px] border border-dashed border-[var(--color-border)] bg-white/50 py-16 text-center">
-                  <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-canvas)] text-[var(--color-subtle)]">
-                    <Search size={40} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="text-xl font-bold">Keine Ergebnisse</h3>
-                  <p className="mt-2 max-w-sm text-[var(--color-muted)]">
-                    Versuche einen anderen Suchbegriff oder lösche den Filter, um alle Gruppen wieder zu sehen.
-                  </p>
-                  <Button size="md" className="mt-8" onClick={() => setSearchQuery("")}>
-                    Suche leeren
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_320px]">
-                  <div className="rounded-[36px] border border-dashed border-[var(--color-border)] bg-white/60 px-8 py-12 text-center shadow-soft">
-                    <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-canvas)] text-[var(--color-subtle)]">
-                      <Plus size={40} strokeWidth={1.5} />
-                    </div>
-                    <h3 className="text-2xl font-extrabold tracking-tight">Noch keine Gruppen</h3>
-                    <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[var(--color-muted)]">
-                      Erstelle deine erste Gruppe, lade Mitgärtner ein und sammle Aufgaben an einem Ort. So wächst aus dem Dashboard direkt eine funktionierende Gartenzentrale.
-                    </p>
-                    <div className="mt-8 flex flex-wrap justify-center gap-3">
-                      <Button size="md" className="gap-2" onClick={() => setIsCreateModalOpen(true)}>
-                        <Plus size={18} strokeWidth={3} />
-                        Jetzt Gruppe erstellen
-                      </Button>
-                      <Button variant="secondary" size="md" className="gap-2" onClick={handleInviteAction}>
-                        <UserPlus size={18} strokeWidth={2.5} />
-                        Einladen vorbereiten
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="rounded-[32px] border border-[var(--color-border)] bg-white/80 p-6 shadow-soft">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-subtle)]">Schnellstart</p>
-                    <h4 className="mt-2 text-xl font-extrabold tracking-tight">In 3 Schritten loslegen</h4>
-                    <div className="mt-6 space-y-4">
-                      {[
-                        "Gruppe anlegen und kurz beschreiben, wofür sie gedacht ist.",
-                        "Einladungslink kopieren und an Mitgärtner schicken.",
-                        "Erste Aufgaben anlegen, damit die Gruppe direkt nutzbar ist.",
-                      ].map((item, index) => (
-                        <div key={item} className="flex gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-soft)] text-sm font-bold text-[var(--color-brand)]">
-                            {index + 1}
-                          </div>
-                          <p className="pt-1 text-sm leading-relaxed text-[var(--color-muted)]">{item}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )
-            ) : (
-              <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredGroups.map((group, index) => (
-                  <motion.div
-                    key={group.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ y: -5 }}
-                    transition={{ duration: 0.4, delay: index * 0.08 }}
-                    onClick={() => router.push(`/group/${group.id}`)}
-                    className="cursor-pointer"
-                  >
-                    <GroupCard
-                      name={group.name}
-                      description={group.description}
-                      memberCount={group.memberCount}
-                      pendingTodos={group.pendingTodos}
-                      role={group.role}
-                    />
-                  </motion.div>
-                ))}
-              </section>
-            )}
-          </section>
-        </main>
-      </div>
+      {/* Floating action button */}
+      <motion.button
+        whileTap={{ scale: 0.93 }}
+        onClick={() => setIsCreateModalOpen(true)}
+        className="fixed bottom-24 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-brand)] text-white shadow-[0_8px_24px_rgba(47,106,83,0.4)] transition-all active:shadow-none"
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </motion.button>
 
       <AnimatePresence>
         {isCreateModalOpen && (
-          <CreateGroupModal 
+          <CreateGroupModal
             isDemoMode={isDemoMode}
             onClose={() => setIsCreateModalOpen(false)}
             onCreated={(groupId: string) => {
-              fetchData();
+              void fetchData();
               router.push(`/group/${groupId}`);
             }}
           />
@@ -617,50 +431,14 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<DashboardContentFallback />}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)]">
+          <Loader2 className="h-7 w-7 animate-spin text-[var(--color-brand)]" />
+        </div>
+      }
+    >
       <DashboardContent />
     </Suspense>
-  );
-}
-
-function DashboardContentFallback() {
-  return (
-    <div className="section-shell py-6 sm:py-10">
-      <div className="glass-panel overflow-hidden rounded-[40px] shadow-card">
-        <header className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-6 sm:px-10">
-          <div className="flex items-center gap-4">
-            <div className="h-11 w-11 animate-pulse rounded-[14px] bg-[var(--color-canvas)]" />
-            <div className="space-y-2">
-              <div className="h-2 w-16 animate-pulse rounded bg-[var(--color-canvas)]" />
-              <div className="h-4 w-32 animate-pulse rounded bg-[var(--color-canvas)]" />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 animate-pulse rounded-full bg-[var(--color-canvas)]" />
-            <div className="h-10 w-10 animate-pulse rounded-full bg-[var(--color-canvas)]" />
-            <div className="h-10 w-10 animate-pulse rounded-full bg-[var(--color-canvas)]" />
-          </div>
-        </header>
-
-        <main className="space-y-12 px-6 py-8 sm:px-10 sm:py-12">
-          <section className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="space-y-4">
-              <div className="h-10 w-64 animate-pulse rounded-2xl bg-[var(--color-canvas)]" />
-              <div className="h-10 w-48 animate-pulse rounded-2xl bg-[var(--color-canvas)]" />
-            </div>
-            <div className="flex gap-3">
-              <div className="h-12 w-28 animate-pulse rounded-full bg-[var(--color-canvas)]" />
-              <div className="h-12 w-28 animate-pulse rounded-full bg-[var(--color-canvas)]" />
-            </div>
-          </section>
-
-          <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 animate-pulse rounded-[32px] bg-[var(--color-canvas)]" />
-            ))}
-          </section>
-        </main>
-      </div>
-    </div>
   );
 }

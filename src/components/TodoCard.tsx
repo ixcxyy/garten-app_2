@@ -2,11 +2,9 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Calendar, Check, Circle } from "lucide-react";
+import { Check } from "lucide-react";
 import { Todo } from "@/lib/types";
-import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/utils/cn";
-import { getProfileDisplayName } from "@/lib/utils";
 
 interface TodoCardProps {
   todo: Todo;
@@ -15,79 +13,62 @@ interface TodoCardProps {
 
 export const TodoCard = ({ todo, onToggleComplete }: TodoCardProps) => {
   const isCompleted = todo.status === "completed";
-  const creatorName = getProfileDisplayName(todo.user_profile);
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4 }}
-      className="surface-panel overflow-hidden rounded-[32px] p-5"
+      exit={{ opacity: 0, scale: 0.97 }}
+      className={cn(
+        "flex items-start gap-3 rounded-2xl border bg-white px-4 py-3.5 shadow-[var(--shadow-soft)] transition-all active:scale-[0.99]",
+        isCompleted ? "border-[var(--color-border)] opacity-60" : "border-[var(--color-border)]",
+      )}
     >
-      <div className="flex items-start gap-4">
-        <button
-          onClick={() => onToggleComplete(todo.id, todo.status)}
+      {/* Checkbox */}
+      <button
+        onClick={() => onToggleComplete(todo.id, todo.status)}
+        className={cn(
+          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200",
+          isCompleted
+            ? "border-[var(--color-brand)] bg-[var(--color-brand)] text-white"
+            : "border-[var(--color-border)] bg-white hover:border-[var(--color-brand)]",
+        )}
+      >
+        {isCompleted && <Check size={13} strokeWidth={3} />}
+      </button>
+
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <p
           className={cn(
-            "mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200",
-            isCompleted
-              ? "border-[var(--color-brand)] bg-[var(--color-brand)] text-white shadow-soft"
-              : "border-[var(--color-border)] bg-white/70 text-[var(--color-muted)] hover:border-[var(--color-brand)]",
+            "text-[15px] font-semibold tracking-tight text-[var(--color-foreground)]",
+            isCompleted && "line-through text-[var(--color-subtle)]",
           )}
         >
-          {isCompleted ? <Check size={18} strokeWidth={3} /> : <Circle size={18} strokeWidth={2} />}
-        </button>
+          {todo.title}
+        </p>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3
+        {todo.description && (
+          <p className="mt-0.5 text-[13px] leading-relaxed text-[var(--color-muted)] line-clamp-2">
+            {todo.description}
+          </p>
+        )}
+
+        {todo.photo_url && (
+          <div className="mt-2.5 overflow-hidden rounded-xl">
+            <Image
+              src={todo.photo_url}
+              alt={todo.title}
+              width={400}
+              height={200}
               className={cn(
-                "text-[17px] font-bold tracking-tight text-[var(--color-foreground)] transition-colors",
-                isCompleted && "text-[var(--color-subtle)] line-through opacity-70",
+                "h-32 w-full object-cover",
+                isCompleted && "grayscale opacity-60",
               )}
-            >
-              {todo.title}
-            </h3>
+            />
           </div>
-
-          {todo.description && (
-            <p className={cn(
-              "mt-2 text-[14px] leading-relaxed text-[var(--color-muted)]",
-              isCompleted && "opacity-60"
-            )}>
-              {todo.description}
-            </p>
-          )}
-
-          {todo.photo_url && (
-            <div className="mt-4 overflow-hidden rounded-[20px] shadow-soft">
-              <Image
-                src={todo.photo_url}
-                alt={todo.title}
-                width={640}
-                height={360}
-                className={cn(
-                  "h-48 w-full object-cover transition-transform duration-500 hover:scale-105",
-                  isCompleted && "grayscale opacity-80"
-                )}
-              />
-            </div>
-          )}
-
-          <div className="mt-5 flex items-center justify-between border-t border-[var(--color-border)] pt-4">
-            <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider text-[var(--color-subtle)]">
-              <Calendar size={14} strokeWidth={2.5} />
-              <span>{new Date(todo.created_at).toLocaleDateString()}</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] font-bold text-[var(--color-muted)]">
-                {creatorName}
-              </span>
-              <Avatar name={creatorName} size="sm" src={todo.user_profile?.avatar_url} />
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </motion.div>
   );
