@@ -1,22 +1,37 @@
-import type { Metadata } from "next";
-import { IBM_Plex_Mono, Manrope } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { DM_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import MobileNav from "@/components/navigation/MobileNav";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
   title: "Garden Groups",
-  description: "A calm, collaborative garden organizer with an Apple-meets-Notion design system.",
+  description: "Gemeinsam gärtnern – organisiert und entspannt.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Garden Groups",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2d6147",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -25,8 +40,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${manrope.variable} ${ibmPlexMono.variable} min-h-screen antialiased`}>
+    <html lang="de">
+      <body className={`${dmSans.variable} ${instrumentSerif.variable} min-h-screen antialiased`}>
         <main className="min-h-screen pb-24 sm:pb-0">{children}</main>
         <MobileNav />
       </body>

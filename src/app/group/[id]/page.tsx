@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ArrowLeft, Loader2, ListTodo, CheckCheck, Copy, Check, Settings } from 'lucide-react';
+import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Todo, Group } from '@/lib/types';
 import { TodoCard } from '@/components/TodoCard';
 import { CreateTodoModal } from '@/components/CreateTodoModal';
 import { GroupSettingsModal } from '@/components/dashboard/GroupSettingsModal';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const MOCK_TODOS: Todo[] = [
   {
@@ -43,7 +44,7 @@ const MOCK_TODOS: Todo[] = [
   },
 ];
 
-export default function GroupPage() {
+function GroupPageContent() {
   const { id } = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -61,12 +62,24 @@ export default function GroupPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'open' | 'done'>('open');
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
+
+  // Fetch current user id for notification suppression
+  useEffect(() => {
+    if (isDemoMode) return;
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
+  }, [isDemoMode]);
+
+  // Push notifications for new todos in this group
+  useNotifications(typeof id === 'string' ? id : undefined, currentUserId);
 
   const copyInviteLink = () => {
     if (!group?.invite_code) return;
     navigator.clipboard.writeText(`${window.location.origin}/invite/${group.invite_code}`);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   const fetchGroupData = useCallback(async () => {
@@ -78,7 +91,7 @@ export default function GroupPage() {
         if (!user) { router.push('/login'); return; }
       }
       if (isDemoMode) {
-        await new Promise(r => setTimeout(r, 400));
+        await new Promise(r => setTimeout(r, 300));
         setGroup({
           id: id as string,
           name: id === 'demo-1' ? 'Urban Oasis Garden' : id === 'demo-2' ? 'Green Neighbors' : 'Community Orchard',
@@ -97,6 +110,7 @@ export default function GroupPage() {
       ]);
 
       if (groupError) throw groupError;
+      if (todosError) throw todosError;
       setGroup(groupData);
       setTodos(todosData || []);
     } catch (error) {
@@ -104,7 +118,7 @@ export default function GroupPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, isDemoMode]);
+  }, [id, isDemoMode, router]);
 
   useEffect(() => { void fetchGroupData(); }, [fetchGroupData]);
 
@@ -123,21 +137,27 @@ export default function GroupPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)]">
-        <Loader2 className="h-7 w-7 animate-spin text-[var(--color-brand)]" />
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--color-canvas)" }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+        >
+          <Leaf size={24} style={{ color: "var(--color-brand)" }} />
+        </motion.div>
       </div>
     );
   }
 
   if (!group) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[var(--color-canvas)]">
-        <h1 className="text-lg font-bold text-[var(--color-foreground)]">Gruppe nicht gefunden</h1>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4" style={{ background: "var(--color-canvas)" }}>
+        <p className="text-base font-semibold" style={{ color: "var(--color-foreground)" }}>Gruppe nicht gefunden</p>
         <button
           onClick={() => router.push('/dashboard')}
-          className="flex items-center gap-2 text-sm text-[var(--color-brand)]"
+          className="flex items-center gap-2 text-sm font-medium"
+          style={{ color: "var(--color-brand)" }}
         >
-          <ArrowLeft size={15} /> Zurück
+          <ArrowLeft size={14} /> Zurück
         </button>
       </div>
     );
@@ -146,83 +166,155 @@ export default function GroupPage() {
   const openTodos = todos.filter(t => t.status === 'pending');
   const doneTodos = todos.filter(t => t.status === 'completed');
   const displayedTodos = activeTab === 'open' ? openTodos : doneTodos;
+  const completionPct = todos.length > 0 ? Math.round((doneTodos.length / todos.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)] pb-28">
+    <div className="min-h-screen pb-32 overflow-x-hidden" style={{ background: "var(--color-canvas)" }}>
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-white/90 backdrop-blur-xl">
+      <header
+        className="sticky top-0 z-30"
+        style={{
+          background: "rgba(248,243,233,0.92)",
+          backdropFilter: "blur(28px)",
+          WebkitBackdropFilter: "blur(28px)",
+          borderBottom: "1px solid var(--color-border)",
+        }}
+      >
         <div className="flex items-center justify-between px-4 py-3">
+          {/* Back + title */}
           <div className="flex items-center gap-3 min-w-0">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.88 }}
               onClick={() => router.back()}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-canvas)] text-[var(--color-muted)] active:scale-95"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              style={{ background: "var(--color-canvas-alt)", color: "var(--color-muted)" }}
             >
-              <ArrowLeft size={18} strokeWidth={2.5} />
-            </button>
+              <ArrowLeft size={17} strokeWidth={2.5} />
+            </motion.button>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-brand)]">Gruppe</p>
-              <h1 className="truncate text-[15px] font-bold tracking-tight text-[var(--color-foreground)]">
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.18em]"
+                style={{ color: "var(--color-brand)" }}
+              >
+                Gruppe
+              </p>
+              <h1
+                className="truncate text-[16px] leading-tight tracking-tight"
+                style={{
+                  color: "var(--color-foreground)",
+                  fontFamily: "var(--font-instrument-serif)",
+                }}
+              >
                 {group.name}
               </h1>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <button
+          {/* Actions */}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <motion.button
+              whileTap={{ scale: 0.88 }}
               onClick={copyInviteLink}
-              className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-canvas)] text-[var(--color-muted)] active:scale-95"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full transition-colors"
+              style={{ background: "var(--color-canvas-alt)", color: "var(--color-muted)" }}
               title="Einladungslink kopieren"
             >
-              {copied
-                ? <Check size={17} className="text-[var(--color-brand)]" strokeWidth={2.5} />
-                : <Copy size={17} strokeWidth={2} />
-              }
-              <AnimatePresence>
-                {copied && (
+              <AnimatePresence mode="wait">
+                {copied ? (
                   <motion.span
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-2.5 py-1 text-[10px] font-bold text-white"
+                    key="check"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
                   >
-                    Kopiert!
+                    <Check size={16} style={{ color: "var(--color-brand)" }} strokeWidth={2.5} />
+                  </motion.span>
+                ) : (
+                  <motion.span key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                    <Copy size={16} strokeWidth={2} />
                   </motion.span>
                 )}
               </AnimatePresence>
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.88 }}
               onClick={() => setIsSettingsOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-canvas)] text-[var(--color-muted)] active:scale-95"
+              className="flex h-9 w-9 items-center justify-center rounded-full"
+              style={{ background: "var(--color-canvas-alt)", color: "var(--color-muted)" }}
             >
-              <Settings size={17} strokeWidth={2} />
-            </button>
+              <Settings size={16} strokeWidth={2} />
+            </motion.button>
           </div>
         </div>
 
-        {/* Stats + Tabs */}
-        <div className="px-4 pb-3 space-y-2.5">
-          <div className="flex gap-2">
-            <div className="flex flex-1 items-center gap-2 rounded-xl bg-amber-50 px-3 py-2">
-              <ListTodo size={14} className="text-amber-500 shrink-0" strokeWidth={2.3} />
-              <span className="text-[13px] font-bold text-amber-700">{openTodos.length} offen</span>
+        {/* Progress + tabs */}
+        <div className="px-4 pb-3 space-y-3">
+          {/* Progress bar */}
+          {todos.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium" style={{ color: "var(--color-subtle)" }}>
+                  Fortschritt
+                </span>
+                <span className="text-[11px] font-bold" style={{ color: "var(--color-brand)" }}>
+                  {completionPct}%
+                </span>
+              </div>
+              <div
+                className="h-1.5 w-full overflow-hidden rounded-full"
+                style={{ background: "var(--color-canvas-alt)" }}
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: "var(--color-brand)" }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${completionPct}%` }}
+                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                />
+              </div>
             </div>
-            <div className="flex flex-1 items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2">
-              <CheckCheck size={14} className="text-emerald-500 shrink-0" strokeWidth={2.3} />
-              <span className="text-[13px] font-bold text-emerald-700">{doneTodos.length} erledigt</span>
-            </div>
-          </div>
-          <div className="flex gap-1.5">
-            {([['open', 'Offen'], ['done', 'Erledigt']] as const).map(([tab, label]) => (
+          )}
+
+          {/* Tab pills */}
+          <div
+            className="flex gap-1.5 rounded-2xl p-1"
+            style={{ background: "var(--color-canvas-alt)" }}
+          >
+            {([
+              ['open', 'Offen', openTodos.length] as const,
+              ['done', 'Erledigt', doneTodos.length] as const,
+            ]).map(([tab, label, count]) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 rounded-xl py-2 text-[13px] font-semibold transition-all ${
-                  activeTab === tab
-                    ? 'bg-[var(--color-brand)] text-white'
-                    : 'bg-[var(--color-canvas)] text-[var(--color-muted)]'
-                }`}
+                className="relative flex-1 rounded-[14px] py-2 text-[13px] font-semibold transition-colors"
+                style={{
+                  color: activeTab === tab ? "var(--color-brand)" : "var(--color-subtle)",
+                }}
               >
-                {label}
+                {activeTab === tab && (
+                  <motion.span
+                    layoutId="tab-bg"
+                    className="absolute inset-0 rounded-[14px]"
+                    style={{ background: "var(--color-panel)" }}
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <span className="relative z-10">
+                  {label}
+                  {count > 0 && (
+                    <span
+                      className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold"
+                      style={{
+                        background: activeTab === tab ? "var(--color-brand-soft)" : "transparent",
+                        color: activeTab === tab ? "var(--color-brand)" : "var(--color-subtle)",
+                      }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
           </div>
@@ -230,50 +322,79 @@ export default function GroupPage() {
       </header>
 
       {/* Todo list */}
-      <main className="px-4 pt-4">
-        {displayedTodos.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-10 flex flex-col items-center rounded-3xl border-2 border-dashed border-[var(--color-border)] bg-white/50 py-14 text-center"
-          >
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-canvas)] text-[var(--color-subtle)]">
-              <ListTodo size={22} strokeWidth={1.5} />
-            </div>
-            <p className="text-[15px] font-semibold text-[var(--color-foreground)]">
-              {activeTab === 'open' ? 'Keine offenen Aufgaben' : 'Noch nichts erledigt'}
-            </p>
-            {activeTab === 'open' && (
-              <p className="mt-1 text-sm text-[var(--color-muted)]">
-                Tippe auf + um eine Aufgabe hinzuzufügen
+      <main className="px-4 pt-4 overflow-x-hidden">
+        <AnimatePresence mode="wait">
+          {displayedTodos.length === 0 ? (
+            <motion.div
+              key={`empty-${activeTab}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="mt-10 flex flex-col items-center rounded-3xl py-16 text-center"
+              style={{
+                background: "var(--color-panel)",
+                border: "2px dashed var(--color-border)",
+              }}
+            >
+              <div
+                className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+                style={{ background: "var(--color-canvas-alt)", color: "var(--color-subtle)" }}
+              >
+                {activeTab === 'open' ? <ListTodo size={22} strokeWidth={1.5} /> : <CheckCheck size={22} strokeWidth={1.5} />}
+              </div>
+              <p className="text-[15px] font-semibold" style={{ color: "var(--color-foreground)" }}>
+                {activeTab === 'open' ? 'Keine offenen Aufgaben' : 'Noch nichts erledigt'}
               </p>
-            )}
-          </motion.div>
-        ) : (
-          <div className="space-y-2.5">
-            <AnimatePresence mode="popLayout">
-              {displayedTodos.map(todo => (
-                <TodoCard
-                  key={todo.id}
-                  todo={todo}
-                  onToggleComplete={toggleTodoComplete}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
+              {activeTab === 'open' && (
+                <p className="mt-1 text-sm" style={{ color: "var(--color-muted)" }}>
+                  Tippe auf + um eine Aufgabe hinzuzufügen
+                </p>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key={`list-${activeTab}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-2.5"
+            >
+              <AnimatePresence mode="popLayout">
+                {displayedTodos.map(todo => (
+                  <TodoCard
+                    key={todo.id}
+                    todo={todo}
+                    onToggleComplete={toggleTodoComplete}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* FAB */}
-      {activeTab === 'open' && (
-        <motion.button
-          whileTap={{ scale: 0.93 }}
-          onClick={() => setIsModalOpen(true)}
-          className="fixed bottom-24 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-brand)] text-white shadow-[0_8px_24px_rgba(47,106,83,0.4)]"
-        >
-          <Plus size={24} strokeWidth={2.5} />
-        </motion.button>
-      )}
+      <AnimatePresence>
+        {activeTab === 'open' && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            whileTap={{ scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 400, damping: 24 }}
+            onClick={() => setIsModalOpen(true)}
+            className="fixed bottom-28 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full text-white"
+            style={{
+              background: "var(--color-brand)",
+              boxShadow: "var(--shadow-brand)",
+            }}
+          >
+            <Plus size={24} strokeWidth={2.5} />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isModalOpen && (
@@ -294,5 +415,21 @@ export default function GroupPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function GroupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--color-canvas)" }}>
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}>
+            <Leaf size={24} style={{ color: "var(--color-brand)" }} />
+          </motion.div>
+        </div>
+      }
+    >
+      <GroupPageContent />
+    </Suspense>
   );
 }

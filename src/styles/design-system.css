@@ -1,27 +1,49 @@
 :root {
   color-scheme: light;
-  --color-canvas: #fbfbfc;
-  --color-surface: rgba(255, 255, 255, 0.82);
-  --color-panel: #ffffff;
-  --color-panel-strong: #ffffff;
-  --color-foreground: #1d1d1f;
-  --color-muted: #6e6e73;
-  --color-subtle: #86868b;
-  --color-border: rgba(0, 0, 0, 0.1);
-  --color-brand: #2f6a53;
-  --color-brand-soft: #f2f7f4;
-  --color-brand-strong: #1d4d3a;
-  --color-danger: #ff3b30;
 
+  /* ── Core Palette ──────────────────────────────────────────── */
+  --color-canvas: #f5f0e8;
+  --color-canvas-alt: #ede8df;
+  --color-surface: rgba(255, 252, 245, 0.88);
+  --color-panel: #fefcf7;
+  --color-panel-strong: #ffffff;
+  --color-foreground: #1a1a18;
+  --color-muted: #5c5c55;
+  --color-subtle: #8a8a7e;
+  --color-border: rgba(30, 30, 20, 0.1);
+  --color-border-strong: rgba(30, 30, 20, 0.18);
+
+  /* ── Brand: Deep Forest Green ──────────────────────────────── */
+  --color-brand: #2d6147;
+  --color-brand-mid: #3d7a5c;
+  --color-brand-soft: #eaf3ee;
+  --color-brand-strong: #1b3d2c;
+  --color-brand-glow: rgba(45, 97, 71, 0.18);
+
+  /* ── Accent: Warm Gold ─────────────────────────────────────── */
+  --color-accent: #c4861a;
+  --color-accent-soft: #fdf3e3;
+
+  /* ── Semantic ──────────────────────────────────────────────── */
+  --color-success: #2a7d52;
+  --color-success-soft: #e8f5ee;
+  --color-warning: #b87333;
+  --color-warning-soft: #fdf0e4;
+  --color-danger: #c0392b;
+  --color-danger-soft: #fdecea;
+
+  /* ── Typography ────────────────────────────────────────────── */
   --type-display-2xl: clamp(3.5rem, 8vw, 6rem);
   --type-display-xl: clamp(2.75rem, 6vw, 4.5rem);
   --type-display-lg: clamp(2rem, 5vw, 3rem);
   --type-title-lg: 1.5rem;
   --type-title-md: 1.25rem;
-  --type-body-lg: 1.125rem;
-  --type-body-md: 1rem;
+  --type-body-lg: 1.0625rem;
+  --type-body-md: 0.9375rem;
   --type-caption: 0.8125rem;
+  --type-micro: 0.6875rem;
 
+  /* ── Spacing ───────────────────────────────────────────────── */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -34,21 +56,38 @@
   --space-16: 4rem;
   --space-20: 5rem;
 
-  --radius-sm: 0.75rem;
+  /* ── Radius ────────────────────────────────────────────────── */
+  --radius-xs: 0.5rem;
+  --radius-sm: 0.875rem;
   --radius-md: 1.25rem;
   --radius-lg: 1.75rem;
   --radius-xl: 2.25rem;
+  --radius-2xl: 2.75rem;
   --radius-pill: 999px;
 
-  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.08);
-  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.12);
+  /* ── Shadows ───────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 4px rgba(0, 0, 0, 0.05);
+  --shadow-soft: 0 2px 16px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 6px rgba(0, 0, 0, 0.04);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.15), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-brand: 0 8px 28px rgba(45, 97, 71, 0.35);
+  --shadow-brand-lg: 0 12px 40px rgba(45, 97, 71, 0.45);
 
-  --glass-blur: 24px;
-  --glass-background: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.4);
+  /* ── Glass ─────────────────────────────────────────────────── */
+  --glass-blur: 28px;
+  --glass-background: rgba(254, 252, 247, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.5);
+
+  /* ── Animation ─────────────────────────────────────────────── */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+  --duration-fast: 140ms;
+  --duration-mid: 240ms;
+  --duration-slow: 380ms;
 }
 
+/* ── Display Typography ──────────────────────────────────────── */
 .display-2xl {
   font-size: var(--type-display-2xl);
   line-height: 0.95;
@@ -67,6 +106,7 @@
   letter-spacing: -0.05em;
 }
 
+/* ── Surface Variants ────────────────────────────────────────── */
 .glass-panel {
   background: var(--glass-background);
   border: 1px solid var(--glass-border);
@@ -81,6 +121,13 @@
   box-shadow: var(--shadow-soft);
 }
 
+.surface-elevated {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Layout ──────────────────────────────────────────────────── */
 .section-shell {
   margin-inline: auto;
   width: min(100%, 76rem);
@@ -89,4 +136,38 @@
 
 .hairline {
   border: 1px solid var(--color-border);
+}
+
+/* ── Organic texture overlay for cards ───────────────────────── */
+.organic-card {
+  position: relative;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.organic-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 180px;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Smooth scrolling ────────────────────────────────────────── */
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Press effect ────────────────────────────────────────────── */
+.press-effect {
+  transition: transform var(--duration-fast) var(--ease-spring);
+}
+.press-effect:active {
+  transform: scale(0.97);
 }
