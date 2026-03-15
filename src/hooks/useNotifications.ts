@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export type NotificationPayload = {
@@ -14,14 +14,24 @@ const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 
 /**
  * Registers the service worker, requests notification permission,
- * and subscribes to Supabase Realtime so that when any group member
- * creates a new todo, a browser notification is fired.
- *
+ * and subscribes to Supabase Realtime.
+ * 
  * @param groupId – if provided, only listen to events in this group
  * @param currentUserId – suppress notifications for the current user's own actions
+ * @param options - extra configuration
  */
-export function useNotifications(groupId?: string, currentUserId?: string) {
+export function useNotifications(
+  groupId?: string, 
+  currentUserId?: string, 
+  options: { autoSubscribe?: boolean } = { autoSubscribe: true }
+) {
   const swRegistered = useRef(false);
+  const [activeGroupId, setActiveGroupId] = useState<string | undefined>(groupId);
+
+  // Sync activeGroupId if prop changes
+  useEffect(() => {
+    setActiveGroupId(groupId);
+  }, [groupId]);
 
   // Register service worker once
   useEffect(() => {
@@ -47,13 +57,11 @@ export function useNotifications(groupId?: string, currentUserId?: string) {
     if (Notification.permission !== 'granted') return;
 
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      // Send via SW for better reliability
       navigator.serviceWorker.controller.postMessage({
         type: 'SHOW_NOTIFICATION',
         ...payload,
       });
     } else {
-      // Fallback: direct browser notification
       new Notification(payload.title, {
         body: payload.body,
         icon: '/icon-192.png',
@@ -63,126 +71,10 @@ export function useNotifications(groupId?: string, currentUserId?: string) {
     }
   }, []);
 
-  // Subscribe to realtime todos for the given group
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-
-    const subscribe = async () => {
-      const hasPermission = await requestPermission();
-      if (!hasPermission) return;
-
-      const filter = groupId ? `group_id=eq.${groupId}` : undefined;
-
-      channel = supabase
-        .channel('todo-notifications')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'todos',
-            ...(filter ? { filter } : {}),
-          },
-          (payload) => {
-            const todo = payload.new as { title: string; creator_id: string; group_id: string };
-            if (currentUserId && todo.creator_id === currentUserId) return;
-            sendLocalNotification({
-              title: '🌱 Neue Aufgabe',
-              body: todo.title,
-              url: `/group/${todo.group_id}`,
-              tag: `todo-${todo.group_id}`,
-            });
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'todos',
-            ...(filter ? { filter } : {}),
-          },
-          (payload) => {
-            const oldTodo = payload.old as { status: string };
-            const newTodo = payload.new as { status: string; title: string; group_id: string };
-            
-            if (oldTodo.status === 'pending' && newTodo.status === 'completed') {
-              sendLocalNotification({
-                title: '✅ Aufgabe erledigt',
-                body: `"${newTodo.title}" wurde abgeschlossen!`,
-                url: `/group/${newTodo.group_id}`,
-                tag: `todo-done-${newTodo.group_id}`,
-              });
-            }
-          }
-        )
-        .subscribe();
-    };
-
-    const checkReminders = async () => {
-      // Mock reminder check — in a real app, this would be a background job
-      // but we can check upcoming tasks from the user's groups on load.
-      if (!currentUserId || !groupId) return;
-
-      const { data: upcoming } = await supabase
-        .from('todos')
-        .select('*')
-        .eq('group_id', groupId)
-        .eq('status', 'pending')
-        .not('due_date', 'is', null);
-
-      if (upcoming) {
-        const now = new Date();
-        const oneDayMs = 24 * 60 * 60 * 1000;
-        const sevenDaysMs = 7 * oneDayMs;
-
-        upcoming.forEach(todo => {
-          const dueDate = new Date(todo.due_date);
-          const diff = dueDate.getTime() - now.getTime();
-          
-          if (diff > 0) {
-            if (diff <= oneDayMs) {
-              sendLocalNotification({
-                title: '⏰ Morgen fällig!',
-                body: `Nicht vergessen: ${todo.title}`,
-                url: `/group/${todo.group_id}`,
-                tag: `reminder-1d-${todo.id}`,
-              });
-            } else if (diff <= sevenDaysMs && diff > sevenDaysMs - oneDayMs) {
-              sendLocalNotification({
-                title: '📅 Nächste Woche fällig',
-                body: `Bald ist ${todo.title} dran.`,
-                url: `/group/${todo.group_id}`,
-                tag: `reminder-7d-${todo.id}`,
-              });
-            }
-          }
-        });
-      }
-    };
-
-    void subscribe();
-    void checkReminders();
-    
-    if (Notification.permission === 'granted') {
-      void subscribeToPush();
-    }
-
-    return () => {
-      if (channel) supabase.removeChannel(channel);
-    };
-  }, [groupId, currentUserId, requestPermission, sendLocalNotification]);
-
   const subscribeToPush = useCallback(async () => {
     try {
       if (!currentUserId || typeof window === 'undefined') return;
-      
-      if (!VAPID_PUBLIC_KEY) {
-        console.warn('Push subscription blocked: NEXT_PUBLIC_VAPID_PUBLIC_KEY is missing.');
-        return;
-      }
+      if (!VAPID_PUBLIC_KEY) return;
       
       const sw = await navigator.serviceWorker.ready;
       const sub = await sw.pushManager.subscribe({
@@ -202,14 +94,108 @@ export function useNotifications(groupId?: string, currentUserId?: string) {
           auth: keys.auth,
         }]);
 
-      if (error) {
-        // Handle duplicate subscription (user already subscribed)
-        if (error.code !== '23505') throw error;
-      }
+      if (error && error.code !== '23505') throw error;
     } catch (error) {
       console.warn('Push subscription failed:', error);
     }
   }, [currentUserId]);
+
+  // Subscribe to realtime todos
+  useEffect(() => {
+    if (typeof window === 'undefined' || !currentUserId || !options.autoSubscribe) return;
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const subscribe = async () => {
+      const hasPermission = Notification.permission === 'granted';
+      if (!hasPermission) return;
+
+      // If no groupId, we listen to all groups the user is in
+      // Supabase's realtime filter is limited, so we either:
+      // 1. Subscribe to everything and filter client-side (easier for small sets)
+      // 2. Or just subscribe to the specific group if provided.
+      
+      const filter = activeGroupId ? `group_id=eq.${activeGroupId}` : undefined;
+
+      channel = supabase
+        .channel(`todo-notifications-${activeGroupId || 'global'}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'todos',
+            ...(filter ? { filter } : {}),
+          },
+          async (payload) => {
+            const todo = payload.new as { title: string; creator_id: string; group_id: string };
+            if (todo.creator_id === currentUserId) return;
+
+            // If global, verify user is in this group
+            if (!activeGroupId) {
+              const { data: isMember } = await supabase
+                .from('group_members')
+                .select('group_id')
+                .eq('group_id', todo.group_id)
+                .eq('user_id', currentUserId)
+                .single();
+              if (!isMember) return;
+            }
+
+            sendLocalNotification({
+              title: '🌱 Neue Aufgabe',
+              body: todo.title,
+              url: `/group/${todo.group_id}`,
+              tag: `todo-${todo.group_id}`,
+            });
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'todos',
+            ...(filter ? { filter } : {}),
+          },
+          async (payload) => {
+            const oldTodo = payload.old as { status: string };
+            const newTodo = payload.new as { status: string; title: string; group_id: string, creator_id: string };
+            
+            if (oldTodo.status === 'pending' && newTodo.status === 'completed') {
+              // Only notify if user is in global mode or it matches active group
+              if (!activeGroupId) {
+                const { data: isMember } = await supabase
+                  .from('group_members')
+                  .select('group_id')
+                  .eq('group_id', newTodo.group_id)
+                  .eq('user_id', currentUserId)
+                  .single();
+                if (!isMember) return;
+              }
+
+              sendLocalNotification({
+                title: '✅ Aufgabe erledigt',
+                body: `"${newTodo.title}" wurde abgeschlossen!`,
+                url: `/group/${newTodo.group_id}`,
+                tag: `todo-done-${newTodo.group_id}`,
+              });
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    void subscribe();
+
+    if (Notification.permission === 'granted') {
+      void subscribeToPush();
+    }
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [activeGroupId, currentUserId, sendLocalNotification, subscribeToPush]);
 
   return { requestPermission, sendLocalNotification, subscribeToPush };
 }

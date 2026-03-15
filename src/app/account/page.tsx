@@ -536,6 +536,12 @@ function PwaTutorialModal({ onClose }: { onClose: () => void }) {
     } else if (/android/.test(ua)) {
       setPlatform("android");
     }
+
+    // Hide taskbar and prevent scrolling
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, []);
 
   const iosSteps = [
@@ -584,6 +590,7 @@ function PwaTutorialModal({ onClose }: { onClose: () => void }) {
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 bg-black/50"
         onClick={onClose}
+        data-modal-open="true"
       />
       <motion.div
         initial={{ opacity: 0, y: 60 }}
@@ -591,6 +598,7 @@ function PwaTutorialModal({ onClose }: { onClose: () => void }) {
         exit={{ opacity: 0, y: 60 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
         className="fixed inset-x-0 bottom-0 z-50 rounded-t-[28px] px-5 pt-6"
+        data-modal-open="true"
         style={{
           maxHeight: '90dvh',
           overflowY: 'auto',

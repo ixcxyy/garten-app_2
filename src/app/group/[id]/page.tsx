@@ -97,7 +97,7 @@ function GroupPageContent() {
     });
   }, [isDemoMode]);
 
-  useNotifications(typeof id === 'string' ? id : undefined, currentUserId);
+  useNotifications(typeof id === 'string' ? id : undefined, currentUserId, { autoSubscribe: false });
 
   const copyInviteLink = () => {
     if (!group?.invite_code) return;

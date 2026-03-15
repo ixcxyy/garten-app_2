@@ -254,7 +254,7 @@ function DashboardContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const { requestPermission, sendLocalNotification, subscribeToPush } = useNotifications(undefined, userProfile?.id);
+  const { requestPermission, sendLocalNotification, subscribeToPush } = useNotifications(undefined, userProfile?.id, { autoSubscribe: false });
 
   const fetchData = useCallback(async () => {
     setLoading(true);

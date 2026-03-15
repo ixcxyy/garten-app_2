@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import MobileNav from "@/components/navigation/MobileNav";
 import { ThemeProvider } from "@/lib/theme";
+import { GlobalNotifications } from "@/components/navigation/GlobalNotifications";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -45,6 +46,7 @@ export default function RootLayout({
       </head>
       <body className={`${manrope.variable} min-h-screen antialiased`}>
         <ThemeProvider>
+          <GlobalNotifications />
           <main className="min-h-screen pb-24 sm:pb-0">{children}</main>
           <MobileNav />
         </ThemeProvider>
