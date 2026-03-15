@@ -6,8 +6,12 @@ import { motion } from 'framer-motion';
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+type RouteParams = {
+  code?: string | string[];
+};
+
 export default function InvitePage() {
-  const { code } = useParams();
+  const { code } = useParams<RouteParams>();
   const router = useRouter();
   const [status, setStatus] = useState<'verifying' | 'joining' | 'success' | 'error'>('verifying');
   const [error, setError] = useState<string | null>(null);
@@ -15,66 +19,66 @@ export default function InvitePage() {
   const [groupId, setGroupId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (code) {
-      handleInvite();
+    if (!code) {
+      return;
     }
-  }, [code]);
+    const inviteCode = Array.isArray(code) ? code[0] : code;
 
-  const handleInvite = async () => {
-    try {
-      // 1. Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        // Redirect to login with return path
-        router.push(`/login?next=/invite/${code}`);
-        return;
-      }
+    const runInviteFlow = async () => {
+      try {
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-      // 2. Verify invite code and get group info
-      setStatus('verifying');
-      const { data: group, error: groupError } = await supabase
-        .from('groups')
-        .select('id, name')
-        .eq('invite_code', code)
-        .single();
+        if (authError || !user) {
+          router.push(`/login?next=/invite/${inviteCode}`);
+          return;
+        }
 
-      if (groupError || !group) {
-        setStatus('error');
-        setError('Invalid or expired invite code.');
-        return;
-      }
+        setStatus('verifying');
+        const { data: group, error: groupError } = await supabase
+          .from('groups')
+          .select('id, name')
+          .eq('invite_code', inviteCode)
+          .single();
 
-      setGroupName(group.name);
-      setGroupId(group.id);
+        if (groupError || !group) {
+          setStatus('error');
+          setError('Invalid or expired invite code.');
+          return;
+        }
 
-      // 3. Join group
-      setStatus('joining');
-      const { error: joinError } = await supabase
-        .from('group_members')
-        .insert({
+        setGroupName(group.name);
+        setGroupId(group.id);
+
+        setStatus('joining');
+        const { error: joinError } = await supabase.from('group_members').insert({
           group_id: group.id,
           user_id: user.id,
-          role: 'member' // Default role
+          role: 'member',
         });
 
-      // Handle duplicate join (already a member) - code 23505 is unique violation in postgres
-      if (joinError && (joinError as any).code !== '23505') {
-        throw joinError;
+        const joinErrorCode = (joinError as { code?: string } | null)?.code;
+        if (joinError && joinErrorCode !== '23505') {
+          throw joinError;
+        }
+
+        setStatus('success');
+        setTimeout(() => {
+          router.push(`/group/${group.id}`);
+        }, 2000);
+      } catch (err: unknown) {
+        const inviteError =
+          err instanceof Error ? err : new Error('An unexpected error occurred.');
+        console.error('Invite error:', err);
+        setStatus('error');
+        setError(inviteError.message);
       }
+    };
 
-      setStatus('success');
-      
-      // Auto redirect after delay
-      setTimeout(() => {
-        router.push(`/group/${group.id}`);
-      }, 2000);
-
-    } catch (err: any) {
-      console.error('Invite error:', err);
-      setStatus('error');
-      setError(err.message || 'An unexpected error occurred.');
-    }
-  };
+    void runInviteFlow();
+  }, [code, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black p-4 font-sans">
@@ -110,7 +114,7 @@ export default function InvitePage() {
                 Welcome to {groupName}!
               </h1>
               <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                You've successfully joined the group. Redirecting you now...
+                You&apos;ve successfully joined the group. Redirecting you now...
               </p>
               <button 
                 onClick={() => router.push(`/group/${groupId}`)}

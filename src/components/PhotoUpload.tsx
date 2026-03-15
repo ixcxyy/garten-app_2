@@ -4,20 +4,16 @@ import React, { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { supabase } from '@/lib/supabase';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '@/lib/utils';
 
 interface PhotoUploadProps {
   onUploadComplete: (url: string) => void;
-  onUploadError?: (error: any) => void;
+  onUploadError?: (error: Error) => void;
   onRemove?: () => void;
   className?: string;
   existingUrl?: string | null;
+  isDemoMode?: boolean;
 }
 
 export const PhotoUpload: React.FC<PhotoUploadProps> = ({
@@ -26,6 +22,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
   onRemove,
   className,
   existingUrl,
+  isDemoMode,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -54,6 +51,23 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
     setPreview(objectUrl);
 
     try {
+      if (isDemoMode) {
+        // Mock upload progress
+        let currentProgress = 10;
+        const interval = setInterval(() => {
+          currentProgress += 15;
+          setProgress(Math.min(currentProgress, 100));
+          if (currentProgress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              setUploading(false);
+              onUploadComplete(objectUrl);
+            }, 600);
+          }
+        }, 300);
+        return;
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `todo-photos/${fileName}`;
@@ -87,12 +101,13 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
         setUploading(false);
         onUploadComplete(publicUrl);
       }, 500);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const uploadError = err instanceof Error ? err : new Error('Failed to upload image.');
       console.error('Upload error:', err);
-      setError(err.message || 'Failed to upload image.');
+      setError(uploadError.message);
       setUploading(false);
       setPreview(existingUrl || null);
-      if (onUploadError) onUploadError(err);
+      if (onUploadError) onUploadError(uploadError);
     }
   }, [existingUrl, onUploadComplete, onUploadError]);
 

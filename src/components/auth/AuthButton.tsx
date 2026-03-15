@@ -1,10 +1,10 @@
 "use client";
 
-import type { ButtonHTMLAttributes } from "react";
+import type { ComponentPropsWithoutRef } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
-interface AuthButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface AuthButtonProps extends Omit<ComponentPropsWithoutRef<typeof Button>, "size"> {
   isLoading?: boolean;
 }
 

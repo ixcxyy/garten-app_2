@@ -1,59 +1,43 @@
 "use client";
 
-import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
-
+import { motion } from "framer-motion";
+import { useState, type InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   hint?: string;
-  error?: string;
-  prefix?: ReactNode;
-  suffix?: ReactNode;
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, hint, error, prefix, suffix, id, ...props }, ref) => {
-    const inputId = id ?? props.name;
+export function Input({ label, hint, className, ...props }: InputProps) {
+  const [isFocused, setIsFocused] = useState(false);
 
-    return (
-      <label className="flex w-full flex-col gap-3" htmlFor={inputId}>
-        {label ? (
-          <span className="text-sm font-medium tracking-[-0.02em] text-foreground">
-            {label}
-          </span>
-        ) : null}
+  return (
+    <label className="block space-y-2">
+      {label ? (
+        <span className="text-sm font-medium tracking-[-0.02em] text-[var(--color-muted)]">
+          {label}
+        </span>
+      ) : null}
 
-        <div
+      <div className="relative">
+        <input
           className={cn(
-            "group flex h-14 items-center gap-3 rounded-[20px] border bg-white/82 px-4 transition-all",
-            error
-              ? "border-[#e7b5b5] focus-within:border-[#db8f8f]"
-              : "border-stroke-soft focus-within:border-sky/45",
-            "focus-within:shadow-focus",
+            "h-[52px] w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white/70 px-4 text-[15px] text-[var(--color-foreground)] shadow-[var(--shadow-soft)] transition-all placeholder:text-[var(--color-subtle)] focus:border-[var(--color-brand)] focus:bg-white",
+            className,
           )}
-        >
-          {prefix ? <span className="text-ink-faint">{prefix}</span> : null}
-          <input
-            ref={ref}
-            id={inputId}
-            className={cn(
-              "h-full w-full border-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-ink-faint",
-              className,
-            )}
-            {...props}
-          />
-          {suffix ? <span className="text-ink-faint">{suffix}</span> : null}
-        </div>
+          onBlur={() => setIsFocused(false)}
+          onFocus={() => setIsFocused(true)}
+          {...props}
+        />
+        <motion.div
+          className="pointer-events-none absolute inset-0 rounded-[var(--radius-md)] border border-[var(--color-brand)]"
+          initial={false}
+          animate={{ opacity: isFocused ? 0.14 : 0, scale: isFocused ? 1 : 0.99 }}
+        />
+      </div>
 
-        {error ? (
-          <span className="text-sm text-[#b45f5f]">{error}</span>
-        ) : hint ? (
-          <span className="text-sm text-ink-soft">{hint}</span>
-        ) : null}
-      </label>
-    );
-  },
-);
-
-Input.displayName = "Input";
+      {hint ? <p className="text-xs text-[var(--color-subtle)]">{hint}</p> : null}
+    </label>
+  );
+}

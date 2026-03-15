@@ -1,11 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { forwardRef, type HTMLAttributes } from "react";
-
+import { motion, type HTMLMotionProps } from "framer-motion";
+import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+export interface CardProps extends HTMLMotionProps<"div"> {
   interactive?: boolean;
 }
 
@@ -14,17 +13,11 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     return (
       <motion.div
         ref={ref}
-        whileHover={
-          interactive
-            ? {
-                y: -6,
-                transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
-              }
-            : undefined
-        }
+        whileHover={interactive ? { y: -4 } : undefined}
+        transition={{ duration: 0.2, ease: "easeOut" }}
         className={cn(
-          "glass-panel rounded-[28px] p-6",
-          interactive && "shadow-lift",
+          "surface-panel rounded-[var(--radius-lg)] p-6 text-[var(--color-foreground)]",
+          interactive && "cursor-pointer",
           className,
         )}
         {...props}
@@ -34,41 +27,3 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
 );
 
 Card.displayName = "Card";
-
-export function CardHeader({
-  className,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("space-y-2", className)} {...props} />;
-}
-
-export function CardTitle({
-  className,
-  ...props
-}: HTMLAttributes<HTMLHeadingElement>) {
-  return (
-    <h3
-      className={cn("text-xl font-semibold tracking-[-0.03em] text-foreground", className)}
-      {...props}
-    />
-  );
-}
-
-export function CardDescription({
-  className,
-  ...props
-}: HTMLAttributes<HTMLParagraphElement>) {
-  return (
-    <p
-      className={cn("max-w-xl text-sm leading-6 text-ink-soft", className)}
-      {...props}
-    />
-  );
-}
-
-export function CardContent({
-  className,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mt-6", className)} {...props} />;
-}

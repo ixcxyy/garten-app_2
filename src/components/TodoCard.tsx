@@ -4,7 +4,9 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { Calendar, Check, Circle } from "lucide-react";
 import { Todo } from "@/lib/types";
+import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/utils/cn";
+import { getProfileDisplayName } from "@/lib/utils";
 
 interface TodoCardProps {
   todo: Todo;
@@ -13,6 +15,7 @@ interface TodoCardProps {
 
 export const TodoCard = ({ todo, onToggleComplete }: TodoCardProps) => {
   const isCompleted = todo.status === "completed";
+  const creatorName = getProfileDisplayName(todo.user_profile);
 
   return (
     <motion.div
@@ -26,51 +29,63 @@ export const TodoCard = ({ todo, onToggleComplete }: TodoCardProps) => {
         <button
           onClick={() => onToggleComplete(todo.id, todo.status)}
           className={cn(
-            "mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors",
+            "mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200",
             isCompleted
-              ? "border-[var(--color-brand)] bg-[var(--color-brand)] text-white"
-              : "border-[var(--color-border)] bg-white/70 text-[var(--color-muted)]",
+              ? "border-[var(--color-brand)] bg-[var(--color-brand)] text-white shadow-soft"
+              : "border-[var(--color-border)] bg-white/70 text-[var(--color-muted)] hover:border-[var(--color-brand)]",
           )}
         >
-          {isCompleted ? <Check size={18} /> : <Circle size={18} />}
+          {isCompleted ? <Check size={18} strokeWidth={3} /> : <Circle size={18} strokeWidth={2} />}
         </button>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
             <h3
               className={cn(
-                "text-lg font-semibold tracking-[-0.04em]",
-                isCompleted && "text-[var(--color-subtle)] line-through",
+                "text-[17px] font-bold tracking-tight text-[var(--color-foreground)] transition-colors",
+                isCompleted && "text-[var(--color-subtle)] line-through opacity-70",
               )}
             >
               {todo.title}
             </h3>
-            <span className="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand)]">
-              {isCompleted ? "Completed" : "Open"}
-            </span>
           </div>
 
-          {todo.description ? (
-            <p className="mt-2 text-[15px] leading-7 text-[var(--color-muted)]">{todo.description}</p>
-          ) : null}
+          {todo.description && (
+            <p className={cn(
+              "mt-2 text-[14px] leading-relaxed text-[var(--color-muted)]",
+              isCompleted && "opacity-60"
+            )}>
+              {todo.description}
+            </p>
+          )}
 
-          {todo.photo_url ? (
-            <div className="mt-4 overflow-hidden rounded-[24px]">
+          {todo.photo_url && (
+            <div className="mt-4 overflow-hidden rounded-[20px] shadow-soft">
               <Image
                 src={todo.photo_url}
                 alt={todo.title}
                 width={640}
-                height={320}
-                className="h-44 w-full object-cover"
+                height={360}
+                className={cn(
+                  "h-48 w-full object-cover transition-transform duration-500 hover:scale-105",
+                  isCompleted && "grayscale opacity-80"
+                )}
               />
             </div>
-          ) : null}
+          )}
 
-          <div className="mt-5 flex items-center gap-2 text-sm text-[var(--color-subtle)]">
-            <Calendar size={15} />
-            <span>{new Date(todo.created_at).toLocaleDateString()}</span>
-            <span className="mx-1 h-1 w-1 rounded-full bg-[var(--color-subtle)]" />
-            <span>{todo.creator_name}</span>
+          <div className="mt-5 flex items-center justify-between border-t border-[var(--color-border)] pt-4">
+            <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider text-[var(--color-subtle)]">
+              <Calendar size={14} strokeWidth={2.5} />
+              <span>{new Date(todo.created_at).toLocaleDateString()}</span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-bold text-[var(--color-muted)]">
+                {creatorName}
+              </span>
+              <Avatar name={creatorName} size="sm" src={todo.user_profile?.avatar_url} />
+            </div>
           </div>
         </div>
       </div>

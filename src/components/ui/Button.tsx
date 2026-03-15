@@ -1,33 +1,30 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { forwardRef, type ButtonHTMLAttributes } from "react";
-
+import { motion, type HTMLMotionProps } from "framer-motion";
+import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "glass";
+type ButtonVariant = "primary" | "secondary" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends HTMLMotionProps<"button"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-[linear-gradient(135deg,#111111_0%,#2a2a2a_100%)] text-white shadow-[0_16px_40px_rgba(17,17,17,0.16)] hover:shadow-[0_20px_48px_rgba(17,17,17,0.22)]",
+    "bg-[var(--color-brand)] text-white shadow-soft hover:bg-[var(--color-brand-strong)]",
   secondary:
-    "border border-stroke-strong bg-white/80 text-foreground hover:bg-white",
+    "bg-white border border-[var(--color-border)] text-[var(--color-foreground)] shadow-soft hover:bg-[var(--color-canvas)]",
   ghost:
-    "text-foreground hover:bg-white/70",
-  glass:
-    "border border-white/60 bg-white/55 text-foreground backdrop-blur-[20px] hover:bg-white/72",
+    "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-brand-soft)] hover:text-[var(--color-brand)]",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
   sm: "h-10 px-4 text-sm",
-  md: "h-12 px-5 text-[15px]",
-  lg: "h-14 px-6 text-base",
+  md: "h-12 px-6 text-[15px]",
+  lg: "h-14 px-8 text-base",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -35,11 +32,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <motion.button
         ref={ref}
-        whileHover={disabled ? undefined : { y: -1.5, scale: 1.01 }}
+        whileHover={disabled ? undefined : { y: -1 }}
         whileTap={disabled ? undefined : { scale: 0.985 }}
-        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-[18px] font-medium tracking-[-0.02em] outline-none transition-all focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-55",
+          "inline-flex min-w-[44px] items-center justify-center rounded-[var(--radius-pill)] font-medium tracking-[-0.02em] transition-all duration-200 disabled:pointer-events-none disabled:opacity-50",
           variantClasses[variant],
           sizeClasses[size],
           className,

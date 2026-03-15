@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { signUp } from "@/lib/supabase";
+import { signUp, supabase } from "@/lib/supabase";
 import AuthLayout from "@/components/auth/AuthLayout";
 import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+
+const hasSupabaseConfig = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+);
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -25,20 +30,20 @@ export default function RegisterPage() {
     return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
   };
 
-  const getRandomColor = () => {
-    const colors = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444"];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
 
+    if (!hasSupabaseConfig) {
+      router.push("/dashboard?mode=demo");
+      return;
+    }
+
+    setIsLoading(true);
     const initials = getInitials(formData.firstName, formData.lastName);
     const avatarUrl = `https://ui-avatars.com/api/?name=${initials}&background=random&color=fff&size=256`;
 
-    const { error: signUpError } = await signUp(formData.email, formData.password, {
+    const { data: signUpData, error: signUpError } = await signUp(formData.email, formData.password, {
       data: {
         username: formData.username,
         first_name: formData.firstName,
@@ -51,6 +56,20 @@ export default function RegisterPage() {
       setError(signUpError.message);
       setIsLoading(false);
     } else {
+      // Manually create profile if trigger is not set up
+      if (signUpData?.user) {
+        await supabase
+          .from("user_profiles")
+          .insert([
+            {
+              id: signUpData.user.id,
+              username: formData.username,
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              avatar_url: avatarUrl,
+            },
+          ]);
+      }
       router.push("/login?registered=true");
     }
   };
@@ -63,57 +82,57 @@ export default function RegisterPage() {
   };
 
   return (
-    <AuthLayout 
-      title="Create Account" 
-      subtitle="Join us and start your journey today"
+    <AuthLayout
+      title="Konto erstellen"
+      subtitle="Bringe Ordnung in euren Gartenalltag mit einer klaren Übersicht für alle."
     >
-      <form onSubmit={handleRegister}>
+      <form onSubmit={handleRegister} className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <AuthInput
-            label="First Name"
+            label="Vorname"
             name="firstName"
-            placeholder="John"
+            placeholder="Jonas"
             value={formData.firstName}
             onChange={handleChange}
-            required
+            required={hasSupabaseConfig}
           />
           <AuthInput
-            label="Last Name"
+            label="Nachname"
             name="lastName"
-            placeholder="Doe"
+            placeholder="Mayer"
             value={formData.lastName}
             onChange={handleChange}
-            required
+            required={hasSupabaseConfig}
           />
         </div>
 
         <AuthInput
-          label="Username"
+          label="Benutzername"
           name="username"
-          placeholder="johndoe123"
+          placeholder="garten.jonas"
           value={formData.username}
           onChange={handleChange}
-          required
+          required={hasSupabaseConfig}
         />
 
         <AuthInput
-          label="Email Address"
+          label="E-Mail"
           name="email"
           type="email"
           placeholder="name@example.com"
           value={formData.email}
           onChange={handleChange}
-          required
+          required={hasSupabaseConfig}
         />
 
         <AuthInput
-          label="Password"
+          label="Passwort"
           name="password"
           type="password"
           placeholder="••••••••"
           value={formData.password}
           onChange={handleChange}
-          required
+          required={hasSupabaseConfig}
         />
 
         <AnimatePresence>
@@ -121,24 +140,39 @@ export default function RegisterPage() {
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl text-sm"
+              className="overflow-hidden"
             >
-              {error}
+              <div className="rounded-[18px] border border-red-500/10 bg-red-500/5 px-4 py-4 text-sm font-medium text-red-600">
+                {error}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <AuthButton isLoading={isLoading} type="submit">
-          Initialize Account
-        </AuthButton>
+        <div className="pt-2">
+          <AuthButton isLoading={isLoading} type="submit" className="w-full">
+            {hasSupabaseConfig ? "Konto anlegen" : "Vorschau öffnen"}
+          </AuthButton>
+        </div>
 
-        <p className="mt-8 text-center text-white/40 text-sm">
-          Already have an account?{" "}
-          <Link href="/login" className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium">
-            Sign in
+        <p className="text-center text-[13px] text-[var(--color-muted)]">
+          Hast du schon ein Konto?{" "}
+          <Link
+            href="/login"
+            className="font-bold text-[var(--color-brand)] transition-colors hover:text-[var(--color-brand-strong)]"
+          >
+            Jetzt anmelden
           </Link>
         </p>
+
+        {!hasSupabaseConfig && (
+          <div className="rounded-[22px] bg-[var(--color-canvas)] p-5 text-center">
+            <p className="text-[12px] font-medium leading-relaxed text-[var(--color-subtle)]">
+              Hinweis: Supabase ist noch nicht verbunden. <br />
+              Die App startet im Demo-Modus.
+            </p>
+          </div>
+        )}
       </form>
     </AuthLayout>
   );
