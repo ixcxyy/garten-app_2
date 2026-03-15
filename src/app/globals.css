@@ -1,26 +1,55 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "../styles/design-system.css";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-foreground);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-ibm-plex-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-canvas);
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(122, 163, 138, 0.18), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.7), transparent 30%),
+    linear-gradient(180deg, #fcfbf8 0%, #f4f1eb 100%);
+  color: var(--color-foreground);
+  font-family: var(--font-manrope), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+a,
+button,
+input,
+textarea {
+  touch-action: manipulation;
+}
+
+::selection {
+  background: var(--color-brand-soft);
+  color: var(--color-foreground);
+}
+
+@layer base {
+  a,
+  button,
+  input,
+  textarea {
+    outline: none;
+  }
 }

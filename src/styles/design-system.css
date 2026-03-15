@@ -1,0 +1,91 @@
+:root {
+  color-scheme: light;
+  --color-canvas: #f7f4ee;
+  --color-surface: rgba(255, 255, 255, 0.72);
+  --color-panel: #fffdf8;
+  --color-panel-strong: #ffffff;
+  --color-foreground: #191816;
+  --color-muted: #6f6b64;
+  --color-subtle: #8c867f;
+  --color-border: rgba(25, 24, 22, 0.09);
+  --color-brand: #2f6a53;
+  --color-brand-soft: #dbe8df;
+  --color-brand-strong: #1e513e;
+  --color-danger: #b14c4c;
+
+  --type-display-2xl: clamp(4rem, 10vw, 7rem);
+  --type-display-xl: clamp(3rem, 7vw, 5.25rem);
+  --type-display-lg: clamp(2.25rem, 5vw, 3.75rem);
+  --type-title-lg: 1.5rem;
+  --type-title-md: 1.25rem;
+  --type-body-lg: 1.0625rem;
+  --type-body-md: 0.9375rem;
+  --type-caption: 0.75rem;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  --radius-sm: 1rem;
+  --radius-md: 1.5rem;
+  --radius-lg: 2rem;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 12px 40px rgba(17, 24, 39, 0.08);
+  --shadow-card: 0 16px 48px rgba(17, 24, 39, 0.1);
+  --shadow-modal: 0 24px 80px rgba(17, 24, 39, 0.16);
+
+  --glass-blur: 20px;
+  --glass-background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.56));
+  --glass-border: rgba(255, 255, 255, 0.72);
+}
+
+.display-2xl {
+  font-size: var(--type-display-2xl);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+}
+
+.display-xl {
+  font-size: var(--type-display-xl);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.display-lg {
+  font-size: var(--type-display-lg);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.glass-panel {
+  background: var(--glass-background);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-soft);
+}
+
+.surface-panel {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
+}
+
+.section-shell {
+  margin-inline: auto;
+  width: min(100%, 76rem);
+  padding-inline: clamp(1.25rem, 4vw, 2rem);
+}
+
+.hairline {
+  border: 1px solid var(--color-border);
+}
