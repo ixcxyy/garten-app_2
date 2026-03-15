@@ -269,7 +269,7 @@ function DashboardContent() {
   const { requestPermission, sendLocalNotification, subscribeToPush } = useNotifications(undefined, userProfile?.id, { autoSubscribe: false });
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    if (groups.length === 0) setLoading(true);
     try {
       const {
         data: { user },

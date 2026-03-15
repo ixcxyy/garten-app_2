@@ -56,8 +56,8 @@ export const TodoCard = ({
       exit={{ opacity: 0, scale: 0.96, y: -4 }}
       transition={{ type: "spring", stiffness: 400, damping: 32 }}
       className={cn(
-        "relative overflow-hidden rounded-[24px] bg-[var(--color-panel)] transition-all duration-300",
-        isCompleted ? "opacity-60 grayscale-[0.3]" : "opacity-100",
+        "relative overflow-hidden rounded-[24px] bg-[var(--color-panel)] transition-opacity duration-300",
+        isCompleted ? "opacity-60" : "opacity-100",
       )}
       style={{
         border: "1px solid var(--color-border)",
@@ -140,14 +140,14 @@ export const TodoCard = ({
 
             {/* Assignees avatars */}
             {assignees.length > 0 && (
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-interactive-bg)] pl-1.5 pr-2.5 py-1">
-                <div className="flex -space-x-1.5">
+              <div className="inline-flex min-h-[28px] items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-interactive-bg)] pl-1.5 pr-2.5 py-1">
+                <div className="flex -space-x-1.5 h-5">
                   {assignees.slice(0, 4).map((a) => {
                     const name = a.user_profile?.first_name || a.user_profile?.username || "?";
                     return (
                       <div
                         key={a.user_id}
-                        className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold border border-[var(--color-panel)] shadow-sm"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold border border-[var(--color-panel)] shadow-sm"
                         style={{ background: "var(--color-brand)", color: "white" }}
                         title={name}
                       >
@@ -161,7 +161,7 @@ export const TodoCard = ({
                   })}
                 </div>
                 <span className="text-[10px] font-bold text-[var(--color-subtle)] uppercase tracking-tight">
-                  {assignees.length} {assignees.length === 1 ? 'dabei' : 'dabei'}
+                  {assignees.length} dabei
                 </span>
               </div>
             )}

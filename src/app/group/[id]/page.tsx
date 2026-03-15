@@ -108,7 +108,8 @@ function GroupPageContent() {
 
   const fetchGroupData = useCallback(async () => {
     if (!id) return;
-    setLoading(true);
+    // Only show full loading state on first load
+    if (!group) setLoading(true);
     try {
       if (!isDemoMode) {
         const { data: { user } } = await supabase.auth.getUser();
@@ -218,13 +219,25 @@ function GroupPageContent() {
 
   const toggleTodoComplete = async (todoId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    // Optimistic update
     setTodos(prev => prev.map(t => t.id === todoId ? { ...t, status: newStatus as 'pending' | 'completed' } : t));
+    
     if (isDemoMode) return;
+    
     try {
-      const { error } = await supabase.from('todos').update({ status: newStatus }).eq('id', todoId);
+      const { error, data } = await supabase
+        .from('todos')
+        .update({ status: newStatus })
+        .eq('id', todoId)
+        .select();
+
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('No rows updated');
+      }
     } catch (error) {
       console.error('Error updating status:', error);
+      // Revert on error
       void fetchGroupData();
     }
   };
