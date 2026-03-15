@@ -288,11 +288,29 @@ function DashboardContent() {
       }
 
       if (user && !isDemoMode) {
-        const { data: profile } = await supabase
+        let { data: profile } = await supabase
           .from("user_profiles")
           .select("*")
           .eq("id", user.id)
           .maybeSingle();
+
+        // Create profile if it doesn't exist yet (fallback for missed trigger)
+        if (!profile) {
+          const meta = user.user_metadata ?? {};
+          await supabase.from("user_profiles").upsert({
+            id: user.id,
+            username: meta.username || user.email?.split("@")[0] || "user",
+            first_name: meta.first_name || null,
+            last_name: meta.last_name || null,
+            avatar_url: meta.avatar_url || null,
+          });
+          const { data: retry } = await supabase
+            .from("user_profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+          profile = retry;
+        }
 
         setUserProfile(profile);
 

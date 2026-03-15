@@ -102,14 +102,24 @@ function GroupPageContent() {
         return;
       }
 
-      const [{ data: groupData, error: groupError }, { data: todosData, error: todosError }] = await Promise.all([
-        supabase.from('groups').select('*').eq('id', id).single(),
-        supabase.from('todos').select('*').eq('group_id', id).order('created_at', { ascending: false }),
-      ]);
+      const { data: groupData, error: groupError } = await supabase
+        .from('groups').select('*').eq('id', id).single();
 
-      if (groupError) throw groupError;
+      if (groupError) {
+        // Retry once after a short delay (RLS propagation after insert)
+        await new Promise(r => setTimeout(r, 500));
+        const { data: retryGroup, error: retryError } = await supabase
+          .from('groups').select('*').eq('id', id).single();
+        if (retryError) throw retryError;
+        setGroup(retryGroup);
+      } else {
+        setGroup(groupData);
+      }
+
+      const { data: todosData, error: todosError } = await supabase
+        .from('todos').select('*').eq('group_id', id).order('created_at', { ascending: false });
+
       if (todosError) throw todosError;
-      setGroup(groupData);
       setTodos(todosData || []);
     } catch (error) {
       console.error('Error fetching group data:', error);

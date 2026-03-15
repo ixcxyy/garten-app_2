@@ -56,20 +56,6 @@ export default function RegisterPage() {
       setError(signUpError.message);
       setIsLoading(false);
     } else {
-      // Manually create profile if trigger is not set up
-      if (signUpData?.user) {
-        await supabase
-          .from("user_profiles")
-          .insert([
-            {
-              id: signUpData.user.id,
-              username: formData.username,
-              first_name: formData.firstName,
-              last_name: formData.lastName,
-              avatar_url: avatarUrl,
-            },
-          ]);
-      }
       router.push("/login?registered=true");
     }
   };

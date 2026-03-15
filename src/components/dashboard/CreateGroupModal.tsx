@@ -90,8 +90,13 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onC
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-        className="relative w-full overflow-hidden rounded-t-[28px] shadow-2xl sm:max-w-md sm:rounded-3xl"
-        style={{ background: 'var(--color-panel)' }}
+        className="relative w-full rounded-t-[28px] shadow-2xl sm:max-w-md sm:rounded-3xl"
+        style={{
+          background: 'var(--color-panel)',
+          maxHeight: '90dvh',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        } as React.CSSProperties}
       >
         {/* Handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
