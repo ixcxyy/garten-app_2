@@ -15,11 +15,15 @@ import {
   Sun,
   Moon,
   Settings,
+  Calendar,
+  Clock,
+  ArrowUpRight,
+  Check,
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui";
 import { supabase, signOut } from "@/lib/supabase";
-import { UserProfile } from "@/lib/types";
+import { UserProfile, Todo } from "@/lib/types";
 import { getProfileDisplayName, getProfileGreetingName } from "@/lib/utils";
 import { CreateGroupModal } from "@/components/dashboard/CreateGroupModal";
 import { useTheme } from "@/lib/theme";
@@ -159,98 +163,72 @@ function GroupCard({
                   Leitung
                 </span>
               )}
-              <div
-                className="flex h-7 w-7 items-center justify-center rounded-full opacity-40 group-hover:opacity-70 transition-opacity"
-                style={{
-                  background: "var(--color-interactive-bg)",
-                  border: "1px solid var(--color-interactive-border)",
-                }}
+            </div>
+          </div>
+
+          <div className="flex items-end justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h3
+                className="text-[18px] font-bold leading-tight mb-1 truncate"
+                style={{ color: "var(--color-foreground)", letterSpacing: "-0.03em" }}
               >
-                <ArrowRight size={11} style={{ color: "var(--color-foreground)" }} />
+                {name}
+              </h3>
+              {description && (
+                <p
+                  className="text-[13px] leading-snug line-clamp-1 mb-0"
+                  style={{ color: "var(--color-muted)" }}
+                >
+                  {description}
+                </p>
+              )}
+            </div>
+
+            <div className="shrink-0 flex items-center gap-1.5">
+              <div
+                className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: "var(--color-interactive-bg)", color: "var(--color-subtle)" }}
+              >
+                <Users size={10} strokeWidth={2.5} />
+                {memberCount}
               </div>
             </div>
           </div>
 
-          <h3
-            className="text-[16px] font-semibold leading-tight mb-1.5"
-            style={{ color: "var(--color-foreground)", letterSpacing: "-0.02em" }}
-          >
-            {name}
-          </h3>
-
-          {description && (
-            <p
-              className="text-[13px] leading-relaxed line-clamp-2 mb-4"
-              style={{ color: "var(--color-muted)" }}
-            >
-              {description}
-            </p>
-          )}
-
-          <div
-            className="flex items-center justify-between pt-3.5"
-            style={{ borderTop: "1px solid var(--color-border)" }}
-          >
-            <div className="flex items-center gap-3">
-              <span
-                className="flex items-center gap-1.5 text-[12px] font-medium"
-                style={{ color: "var(--color-subtle)" }}
-              >
-                <Users size={11} strokeWidth={1.8} />
-                {memberCount}
-              </span>
-
-              {pendingTodos > 0 ? (
-                <span
-                  className="rounded-full px-2.5 py-[3px] text-[11px] font-medium"
-                  style={{
-                    background: "var(--color-interactive-bg)",
-                    color: "var(--color-muted)",
-                    border: "1px solid var(--color-interactive-border)",
-                  }}
-                >
-                  {pendingTodos} offen
-                </span>
-              ) : total > 0 ? (
-                <span
-                  className="rounded-full px-2.5 py-[3px] text-[11px] font-medium"
-                  style={{
-                    background: "var(--color-brand-soft)",
-                    color: "var(--color-brand)",
-                    border: "1px solid var(--color-interactive-border)",
-                  }}
-                >
-                  Erledigt ✓
-                </span>
-              ) : null}
-            </div>
-
-            {total > 0 && (
-              <div className="flex items-center gap-2 shrink-0">
+          <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {pendingTodos > 0 ? (
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand)] animate-pulse" />
+                    <span className="text-[12px] font-bold text-[var(--color-subtle)]">
+                      {pendingTodos} <span className="font-semibold opacity-60">Aufgaben</span>
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-[12px] font-bold" style={{ color: "var(--color-brand)" }}>
+                    Alles erledigt ✨
+                  </span>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
                 <div
-                  className="h-[2px] w-16 overflow-hidden rounded-full"
-                  style={{ background: "var(--color-border-strong)" }}
+                  className="h-1.5 w-24 overflow-hidden rounded-full bg-[var(--color-border-strong)]"
                 >
                   <motion.div
                     className="h-full rounded-full"
                     style={{ background: "var(--color-brand)" }}
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
-                    transition={{
-                      duration: 1,
-                      delay: index * 0.06 + 0.4,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
+                    transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
                   />
                 </div>
-                <span
-                  className="text-[11px] font-medium tabular-nums"
-                  style={{ color: "var(--color-subtle)" }}
-                >
+                <span className="text-[11px] font-bold tabular-nums text-[var(--color-muted)]">
                   {progress}%
                 </span>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
@@ -268,6 +246,7 @@ function DashboardContent() {
     process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
 
   const [groups, setGroups] = useState<DashboardGroup[]>([]);
+  const [upcomingTodos, setUpcomingTodos] = useState<(Todo & { group_name: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -382,6 +361,22 @@ function DashboardContent() {
             completedTodos: doneCounts[g.id] ?? 0,
           })),
         );
+
+        // Fetch upcoming todos from all groups
+        const { data: allPending } = await supabase
+          .from("todos")
+          .select("*, groups(name)")
+          .in("group_id", groupIds)
+          .eq("status", "pending")
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .limit(4);
+
+        if (allPending) {
+          setUpcomingTodos(allPending.map(t => ({
+            ...t,
+            group_name: (t.groups as any)?.name || "Unbekannt"
+          })));
+        }
       } else if (isDemoMode) {
         setGroups(MOCK_GROUPS);
         setUserProfile({
@@ -676,46 +671,105 @@ function DashboardContent() {
         {/* Stats cards */}
         {groups.length > 0 && (
           <motion.div
-            className="mb-8 grid grid-cols-3 gap-2"
+            className="mb-8 grid grid-cols-2 gap-3"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
           >
+            <motion.div
+              className="col-span-2 relative overflow-hidden rounded-[2rem] px-6 py-6"
+              style={{
+                background: "linear-gradient(135deg, var(--color-brand), #2dd4bf)",
+                boxShadow: "var(--shadow-brand-lg)",
+              }}
+            >
+              <div className="relative z-10 flex items-center justify-between">
+                <div>
+                  <p className="text-[12px] font-bold text-white/70 uppercase tracking-widest mb-1">Status</p>
+                  <p className="text-[32px] font-extrabold text-white leading-none tracking-tight">
+                    {totalPendingTodos} <span className="text-[14px] font-medium opacity-80">offen</span>
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                  <Sprout size={24} color="white" strokeWidth={2.5} />
+                </div>
+              </div>
+              <div className="absolute -bottom-6 -right-6 h-32 w-32 bg-white/10 rounded-full blur-2xl" />
+            </motion.div>
+
             {[
-              { label: "Gruppen", value: groups.length },
-              { label: "Offen", value: totalPendingTodos },
-              { label: "Erledigt", value: totalCompletedTodos },
-            ].map(({ label, value }, i) => (
+              { label: "Gruppen", value: groups.length, icon: <Users size={14} /> },
+              { label: "Erledigt", value: totalCompletedTodos, icon: <Check size={14} /> },
+            ].map(({ label, value, icon }, i) => (
               <motion.div
                 key={label}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{
                   duration: 0.4,
-                  delay: 0.1 + i * 0.05,
+                  delay: 0.15 + i * 0.05,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                className="rounded-2xl px-3 py-4 text-center"
+                className="rounded-[1.8rem] px-5 py-4"
                 style={{
                   background: "var(--color-panel)",
                   border: "1px solid var(--color-border)",
                   boxShadow: "var(--shadow-card)",
                 }}
               >
-                <p
-                  className="text-[28px] leading-none font-bold tabular-nums"
-                  style={{ color: "var(--color-foreground)", letterSpacing: "-0.04em" }}
-                >
+                <div className="flex items-center gap-2 mb-2 text-[var(--color-muted)]">
+                  {icon}
+                  <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+                </div>
+                <p className="text-[24px] font-extrabold" style={{ color: "var(--color-foreground)", letterSpacing: "-0.04em" }}>
                   {value}
-                </p>
-                <p
-                  className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                  style={{ color: "var(--color-subtle)" }}
-                >
-                  {label}
                 </p>
               </motion.div>
             ))}
+          </motion.div>
+        )}
+
+        {/* Upcoming Tasks Section */}
+        {upcomingTodos.length > 0 && !searchQuery && (
+          <motion.div
+            className="mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+          >
+            <div className="flex items-center justify-between mb-4 px-1">
+              <h2 className="text-[14px] font-bold uppercase tracking-[0.15em] text-[var(--color-subtle)]">Anstehend</h2>
+              <Clock size={14} className="text-[var(--color-muted)]" />
+            </div>
+            <div className="space-y-2.5">
+              {upcomingTodos.map((todo, idx) => (
+                <motion.div
+                  key={todo.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + idx * 0.05 }}
+                  className="group relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-3.5 transition-all hover:border-[var(--color-brand-soft)]"
+                  style={{ boxShadow: "var(--shadow-card)" }}
+                  onClick={() => router.push(`/group/${todo.group_id}`)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold text-[var(--color-subtle)] uppercase tracking-wider mb-0.5">
+                        {todo.group_name}
+                      </p>
+                      <h3 className="truncate text-[15px] font-semibold text-[var(--color-foreground)]">
+                        {todo.title}
+                      </h3>
+                    </div>
+                    {todo.due_date && (
+                      <div className="ml-3 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold bg-[var(--color-brand-soft)] text-[var(--color-brand)] border border-[var(--color-interactive-border)]">
+                        {new Date(todo.due_date).toLocaleDateString("de-DE", { day: "numeric", month: "short" })}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </motion.div>
         )}
 

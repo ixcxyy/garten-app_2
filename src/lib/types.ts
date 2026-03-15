@@ -61,6 +61,22 @@ export interface PollVote {
   created_at: string;
 }
 
+export interface TaskAssignee {
+  id: string;
+  todo_id: string;
+  user_id: string;
+  created_at: string;
+  user_profile?: UserProfile;
+}
+
+export interface TaskReaction {
+  id: string;
+  todo_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+}
+
 export interface Notification {
   id: string;
   user_id: string;

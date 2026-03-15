@@ -3,15 +3,19 @@
 import React, { useCallback, useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3 } from 'lucide-react';
+import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3, Users, EyeOff, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { Todo, Group, Poll } from '@/lib/types';
+import { Todo, Group, Poll, TaskReaction, UserProfile, GroupMember } from '@/lib/types';
 import { TodoCard } from '@/components/TodoCard';
 import { CreateTodoModal } from '@/components/CreateTodoModal';
 import { CreatePollModal } from '@/components/CreatePollModal';
 import { PollCard } from '@/components/PollCard';
 import { GroupSettingsModal } from '@/components/dashboard/GroupSettingsModal';
 import { useNotifications } from '@/hooks/useNotifications';
+
+type AssigneeMap = Record<string, { user_id: string; user_profile?: UserProfile }[]>;
+type ReactionMap = Record<string, TaskReaction[]>;
+type AssignedSet = Set<string>;
 
 const MOCK_TODOS: Todo[] = [
   {
@@ -69,8 +73,22 @@ function GroupPageContent() {
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [polls, setPolls] = useState<Poll[]>([]);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'open' | 'done' | 'polls'>('open');
+  const [activeTab, setActiveTab] = useState<'open' | 'done' | 'polls' | 'members'>('open');
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
+  const [hideCompleted, setHideCompleted] = useState(false);
+  const [members, setMembers] = useState<(GroupMember & { user_profile?: UserProfile })[]>([]);
+  const [assigneeMap, setAssigneeMap] = useState<AssigneeMap>({});
+  const [reactionMap, setReactionMap] = useState<ReactionMap>({});
+  const [myAssignments, setMyAssignments] = useState<AssignedSet>(new Set());
+
+  useEffect(() => {
+    const saved = localStorage.getItem('hide_completed');
+    if (saved !== null) setHideCompleted(saved === 'true');
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('hide_completed', hideCompleted.toString());
+  }, [hideCompleted]);
 
   useEffect(() => {
     if (isDemoMode) return;
@@ -114,7 +132,6 @@ function GroupPageContent() {
         .from('groups').select('*').eq('id', id).single();
 
       if (groupError) {
-        // Retry once after a short delay (RLS propagation after insert)
         await new Promise(r => setTimeout(r, 500));
         const { data: retryGroup, error: retryError } = await supabase
           .from('groups').select('*').eq('id', id).single();
@@ -124,11 +141,67 @@ function GroupPageContent() {
         setGroup(groupData);
       }
 
-      const { data: todosData, error: todosError } = await supabase
-        .from('todos').select('*').eq('group_id', id).order('created_at', { ascending: false });
+      // Fetch todos, members, assignees, reactions in parallel
+      const [todosRes, membersRes] = await Promise.all([
+        supabase.from('todos').select('*').eq('group_id', id).order('created_at', { ascending: false }),
+        supabase.from('group_members').select('user_id, role, joined_at, group_id').eq('group_id', id),
+      ]);
 
-      if (todosError) throw todosError;
-      setTodos(todosData || []);
+      const todosData = todosRes.data || [];
+      setTodos(todosData);
+
+      // Fetch member profiles
+      const memberRows = membersRes.data || [];
+      if (memberRows.length > 0) {
+        const memberIds = memberRows.map(m => m.user_id);
+        const { data: profiles } = await supabase
+          .from('user_profiles').select('*').in('id', memberIds);
+        const profileMap = (profiles || []).reduce<Record<string, UserProfile>>((acc, p) => {
+          acc[p.id] = p;
+          return acc;
+        }, {});
+        setMembers(memberRows.map(m => ({ ...m, user_profile: profileMap[m.user_id] })));
+      }
+
+      // Fetch assignees and reactions for all todos
+      const todoIds = todosData.map(t => t.id);
+      if (todoIds.length > 0) {
+        const [assigneesRes, reactionsRes] = await Promise.all([
+          supabase.from('task_assignees').select('todo_id, user_id').in('todo_id', todoIds),
+          supabase.from('task_reactions').select('*').in('todo_id', todoIds),
+        ]);
+
+        // Build assignee map with profiles
+        const assigneeRows = assigneesRes.data || [];
+        const assigneeUserIds = [...new Set(assigneeRows.map(a => a.user_id))];
+        let assigneeProfiles: Record<string, UserProfile> = {};
+        if (assigneeUserIds.length > 0) {
+          const { data: aProfiles } = await supabase
+            .from('user_profiles').select('*').in('id', assigneeUserIds);
+          assigneeProfiles = (aProfiles || []).reduce<Record<string, UserProfile>>((acc, p) => {
+            acc[p.id] = p;
+            return acc;
+          }, {});
+        }
+
+        const aMap: AssigneeMap = {};
+        const mySet = new Set<string>();
+        for (const a of assigneeRows) {
+          if (!aMap[a.todo_id]) aMap[a.todo_id] = [];
+          aMap[a.todo_id].push({ user_id: a.user_id, user_profile: assigneeProfiles[a.user_id] });
+          if (currentUserId && a.user_id === currentUserId) mySet.add(a.todo_id);
+        }
+        setAssigneeMap(aMap);
+        setMyAssignments(mySet);
+
+        // Build reaction map
+        const rMap: ReactionMap = {};
+        for (const r of (reactionsRes.data || [])) {
+          if (!rMap[r.todo_id]) rMap[r.todo_id] = [];
+          rMap[r.todo_id].push(r);
+        }
+        setReactionMap(rMap);
+      }
 
       // Fetch polls
       const { data: pollsData } = await supabase
@@ -139,7 +212,7 @@ function GroupPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [id, isDemoMode, router]);
+  }, [id, isDemoMode, router, currentUserId]);
 
   useEffect(() => { void fetchGroupData(); }, [fetchGroupData]);
 
@@ -154,6 +227,44 @@ function GroupPageContent() {
       console.error('Error updating status:', error);
       void fetchGroupData();
     }
+  };
+
+  const handleAssign = async (todoId: string) => {
+    if (!currentUserId || isDemoMode) return;
+    setMyAssignments(prev => new Set(prev).add(todoId));
+    setAssigneeMap(prev => ({
+      ...prev,
+      [todoId]: [...(prev[todoId] || []), { user_id: currentUserId }],
+    }));
+    await supabase.from('task_assignees').insert({ todo_id: todoId, user_id: currentUserId });
+  };
+
+  const handleUnassign = async (todoId: string) => {
+    if (!currentUserId || isDemoMode) return;
+    setMyAssignments(prev => { const s = new Set(prev); s.delete(todoId); return s; });
+    setAssigneeMap(prev => ({
+      ...prev,
+      [todoId]: (prev[todoId] || []).filter(a => a.user_id !== currentUserId),
+    }));
+    await supabase.from('task_assignees').delete().eq('todo_id', todoId).eq('user_id', currentUserId);
+  };
+
+  const handleReact = async (todoId: string, emoji: string) => {
+    if (!currentUserId || isDemoMode) return;
+    setReactionMap(prev => ({
+      ...prev,
+      [todoId]: [...(prev[todoId] || []), { id: '', todo_id: todoId, user_id: currentUserId, emoji, created_at: '' }],
+    }));
+    await supabase.from('task_reactions').insert({ todo_id: todoId, user_id: currentUserId, emoji });
+  };
+
+  const handleUnreact = async (todoId: string, emoji: string) => {
+    if (!currentUserId || isDemoMode) return;
+    setReactionMap(prev => ({
+      ...prev,
+      [todoId]: (prev[todoId] || []).filter(r => !(r.user_id === currentUserId && r.emoji === emoji)),
+    }));
+    await supabase.from('task_reactions').delete().eq('todo_id', todoId).eq('user_id', currentUserId).eq('emoji', emoji);
   };
 
   if (loading) {
@@ -186,7 +297,7 @@ function GroupPageContent() {
 
   const openTodos = todos.filter(t => t.status === 'pending');
   const doneTodos = todos.filter(t => t.status === 'completed');
-  const displayedTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? doneTodos : [];
+  const displayedTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? (hideCompleted ? [] : doneTodos) : [];
   const completionPct = todos.length > 0 ? Math.round((doneTodos.length / todos.length) * 100) : 0;
 
   return (
@@ -305,7 +416,7 @@ function GroupPageContent() {
 
           {/* Tab pills */}
           <div
-            className="flex gap-1.5 rounded-2xl p-1"
+            className="flex gap-1 rounded-2xl p-1"
             style={{
               background: "var(--color-interactive-bg)",
               border: "1px solid var(--color-border)",
@@ -315,11 +426,12 @@ function GroupPageContent() {
               ['open', 'Offen', openTodos.length] as const,
               ['done', 'Erledigt', doneTodos.length] as const,
               ['polls', 'Abstimmungen', polls.length] as const,
+              ['members', 'Mitglieder', members.length] as const,
             ]).map(([tab, label, count]) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className="relative flex-1 rounded-[14px] py-2 text-[13px] font-semibold transition-colors"
+                className="relative flex-1 rounded-[14px] py-2 text-[12px] font-semibold transition-colors"
                 style={{
                   color: activeTab === tab ? "var(--color-foreground)" : "var(--color-muted)",
                 }}
@@ -336,7 +448,7 @@ function GroupPageContent() {
                   {label}
                   {count > 0 && (
                     <span
-                      className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold"
+                      className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold"
                       style={{
                         background: activeTab === tab ? "var(--color-brand-soft)" : "transparent",
                         color: activeTab === tab ? "var(--color-brand)" : "var(--color-subtle)",
@@ -354,9 +466,123 @@ function GroupPageContent() {
 
       {/* Content */}
       <main className="px-4 pt-4 overflow-x-hidden">
+        {/* Hide completed toggle for done tab */}
+        {activeTab === 'done' && doneTodos.length > 0 && (
+          <div className="flex items-center justify-end mb-3">
+            <button
+              onClick={() => setHideCompleted(!hideCompleted)}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all"
+              style={{
+                background: hideCompleted ? "var(--color-brand-soft)" : "var(--color-interactive-bg)",
+                color: hideCompleted ? "var(--color-brand)" : "var(--color-muted)",
+                border: "1px solid var(--color-border)",
+              }}
+            >
+              {hideCompleted ? <Eye size={12} /> : <EyeOff size={12} />}
+              {hideCompleted ? "Einblenden" : "Ausblenden"}
+            </button>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
-          {activeTab === 'polls' ? (
-            /* Polls tab */
+          {activeTab === 'members' ? (
+            <motion.div
+              key="members"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="space-y-2"
+            >
+              {members.map((member) => {
+                const profile = member.user_profile;
+                const displayName = profile?.first_name
+                  ? `${profile.first_name}${profile.last_name ? ' ' + profile.last_name : ''}`
+                  : profile?.username || 'Unbekannt';
+                const initial = displayName.charAt(0).toUpperCase();
+                const isOwner = member.role === 'owner';
+
+                return (
+                  <div
+                    key={member.user_id}
+                    className="flex items-center gap-3 rounded-2xl px-4 py-3.5"
+                    style={{
+                      background: "var(--color-panel)",
+                      border: "1px solid var(--color-border)",
+                    }}
+                  >
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[14px] font-bold"
+                      style={{
+                        background: "var(--color-brand-soft)",
+                        color: "var(--color-brand)",
+                      }}
+                    >
+                      {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} alt={displayName} className="h-10 w-10 rounded-full object-cover" />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full text-[14px] font-bold"
+                          style={{ background: "var(--color-brand-soft)", color: "var(--color-brand)" }}
+                        >
+                          {initial}
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[14px] font-bold" style={{ color: "var(--color-foreground)", letterSpacing: "-0.01em" }}>
+                        {displayName}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        {profile?.username && (
+                          <p className="text-[12px] opacity-60" style={{ color: "var(--color-muted)" }}>
+                            @{profile.username}
+                          </p>
+                        )}
+                        {member.joined_at && (
+                          <span className="text-[10px] opacity-40" style={{ color: "var(--color-muted)" }}>
+                            · {new Date(member.joined_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {isOwner ? (
+                      <div
+                        className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+                        style={{
+                          background: "var(--color-brand-soft)",
+                          color: "var(--color-brand)",
+                          border: "1px solid var(--color-interactive-border)",
+                        }}
+                      >
+                        <Settings size={10} />
+                        Leitung
+                      </div>
+                    ) : (
+                      <span
+                        className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider"
+                        style={{
+                          background: "var(--color-interactive-bg)",
+                          color: "var(--color-subtle)",
+                          border: "1px solid var(--color-border)",
+                        }}
+                      >
+                        Mitglied
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              {members.length === 0 && (
+                <div className="mt-10 flex flex-col items-center rounded-2xl py-16 text-center"
+                  style={{ background: "var(--color-panel)", border: "1px dashed var(--color-border-strong)" }}
+                >
+                  <Users size={22} style={{ color: "var(--color-muted)" }} />
+                  <p className="mt-3 text-[15px] font-semibold" style={{ color: "var(--color-foreground)" }}>
+                    Keine Mitglieder
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          ) : activeTab === 'polls' ? (
             polls.length === 0 ? (
               <motion.div
                 key="empty-polls"
@@ -401,7 +627,7 @@ function GroupPageContent() {
                 {activeTab === 'open' ? <ListTodo size={22} strokeWidth={1.5} /> : <CheckCheck size={22} strokeWidth={1.5} />}
               </div>
               <p className="text-[15px] font-semibold" style={{ color: "var(--color-foreground)", letterSpacing: "-0.02em" }}>
-                {activeTab === 'open' ? 'Keine offenen Aufgaben' : 'Noch nichts erledigt'}
+                {activeTab === 'open' ? 'Keine offenen Aufgaben' : hideCompleted ? 'Erledigte ausgeblendet' : 'Noch nichts erledigt'}
               </p>
               {activeTab === 'open' && (
                 <p className="mt-1 text-sm" style={{ color: "var(--color-muted)" }}>
@@ -420,7 +646,20 @@ function GroupPageContent() {
             >
               <AnimatePresence mode="popLayout">
                 {displayedTodos.map(todo => (
-                  <TodoCard key={todo.id} todo={todo} onToggleComplete={toggleTodoComplete} />
+                  <TodoCard
+                    key={todo.id}
+                    todo={todo}
+                    onToggleComplete={toggleTodoComplete}
+                    currentUserId={currentUserId}
+                    assignees={assigneeMap[todo.id] || []}
+                    reactions={reactionMap[todo.id] || []}
+                    isAssigned={myAssignments.has(todo.id)}
+                    onAssign={() => handleAssign(todo.id)}
+                    onUnassign={() => handleUnassign(todo.id)}
+                    onReact={(emoji) => handleReact(todo.id, emoji)}
+                    onUnreact={(emoji) => handleUnreact(todo.id, emoji)}
+                    isDemoMode={isDemoMode}
+                  />
                 ))}
               </AnimatePresence>
             </motion.div>
@@ -514,6 +753,7 @@ function GroupPageContent() {
             onClose={() => setIsSettingsOpen(false)}
             onUpdated={fetchGroupData}
             isDemoMode={isDemoMode}
+            isOwner={currentUserId === group?.owner_id}
           />
         )}
       </AnimatePresence>

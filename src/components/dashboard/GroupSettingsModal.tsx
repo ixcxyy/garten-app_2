@@ -16,9 +16,10 @@ interface GroupSettingsModalProps {
   onClose: () => void;
   onUpdated: () => void;
   isDemoMode?: boolean;
+  isOwner?: boolean;
 }
 
-export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({ group, onClose, onUpdated, isDemoMode }) => {
+export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({ group, onClose, onUpdated, isDemoMode, isOwner = false }) => {
   const router = useRouter();
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description || '');
@@ -155,13 +156,15 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({ group, o
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500 transition-colors hover:bg-red-100"
-                >
-                  <Trash2 size={20} />
-                </button>
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500 transition-colors hover:bg-red-100"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                )}
                 <Button type="submit" className="flex-1 h-14 gap-2" disabled={isSubmitting || !name.trim()}>
                   {isSubmitting ? <Loader2 className="animate-spin" /> : <Save size={20} />}
                   Speichern

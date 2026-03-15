@@ -85,10 +85,7 @@ export function useNotifications(groupId?: string, currentUserId?: string) {
           },
           (payload) => {
             const todo = payload.new as { title: string; creator_id: string; group_id: string };
-
-            // Don't notify user about their own actions
             if (currentUserId && todo.creator_id === currentUserId) return;
-
             sendLocalNotification({
               title: '🌱 Neue Aufgabe',
               body: todo.title,
@@ -97,10 +94,75 @@ export function useNotifications(groupId?: string, currentUserId?: string) {
             });
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'todos',
+            ...(filter ? { filter } : {}),
+          },
+          (payload) => {
+            const oldTodo = payload.old as { status: string };
+            const newTodo = payload.new as { status: string; title: string; group_id: string };
+            
+            if (oldTodo.status === 'pending' && newTodo.status === 'completed') {
+              sendLocalNotification({
+                title: '✅ Aufgabe erledigt',
+                body: `"${newTodo.title}" wurde abgeschlossen!`,
+                url: `/group/${newTodo.group_id}`,
+                tag: `todo-done-${newTodo.group_id}`,
+              });
+            }
+          }
+        )
         .subscribe();
     };
 
+    const checkReminders = async () => {
+      // Mock reminder check — in a real app, this would be a background job
+      // but we can check upcoming tasks from the user's groups on load.
+      if (!currentUserId || !groupId) return;
+
+      const { data: upcoming } = await supabase
+        .from('todos')
+        .select('*')
+        .eq('group_id', groupId)
+        .eq('status', 'pending')
+        .not('due_date', 'is', null);
+
+      if (upcoming) {
+        const now = new Date();
+        const oneDayMs = 24 * 60 * 60 * 1000;
+        const sevenDaysMs = 7 * oneDayMs;
+
+        upcoming.forEach(todo => {
+          const dueDate = new Date(todo.due_date);
+          const diff = dueDate.getTime() - now.getTime();
+          
+          if (diff > 0) {
+            if (diff <= oneDayMs) {
+              sendLocalNotification({
+                title: '⏰ Morgen fällig!',
+                body: `Nicht vergessen: ${todo.title}`,
+                url: `/group/${todo.group_id}`,
+                tag: `reminder-1d-${todo.id}`,
+              });
+            } else if (diff <= sevenDaysMs && diff > sevenDaysMs - oneDayMs) {
+              sendLocalNotification({
+                title: '📅 Nächste Woche fällig',
+                body: `Bald ist ${todo.title} dran.`,
+                url: `/group/${todo.group_id}`,
+                tag: `reminder-7d-${todo.id}`,
+              });
+            }
+          }
+        });
+      }
+    };
+
     void subscribe();
+    void checkReminders();
 
     return () => {
       if (channel) supabase.removeChannel(channel);
