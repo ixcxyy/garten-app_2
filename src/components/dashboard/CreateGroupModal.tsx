@@ -90,7 +90,8 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onC
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-        className="relative w-full overflow-hidden rounded-t-[28px] bg-white shadow-2xl sm:max-w-md sm:rounded-3xl"
+        className="relative w-full overflow-hidden rounded-t-[28px] shadow-2xl sm:max-w-md sm:rounded-3xl"
+        style={{ background: 'var(--color-panel)' }}
       >
         {/* Handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
@@ -104,13 +105,14 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onC
           </h2>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-canvas)] text-[var(--color-muted)] transition-colors hover:bg-gray-100"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors"
+            style={{ background: 'var(--color-canvas-alt)', color: 'var(--color-muted)' }}
           >
             <X size={17} strokeWidth={2.5} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-5 pb-8 space-y-4">
+        <form onSubmit={handleSubmit} className="px-5 pb-8 sm:pb-8 space-y-4" style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 1rem))' }}>
           {/* Name */}
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--color-subtle)]">
@@ -121,7 +123,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onC
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="z.B. Mein Stadtgarten"
-              className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-canvas)] px-4 py-3 text-[15px] font-medium placeholder:text-[var(--color-subtle)] focus:border-[var(--color-brand)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-soft)]"
+              className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-canvas)] px-4 py-3 text-[15px] font-medium text-[var(--color-foreground)] placeholder:text-[var(--color-subtle)] focus:border-[var(--color-brand)] focus:bg-[var(--color-panel)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-soft)]"
               required
               autoFocus
             />
@@ -137,7 +139,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onC
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Worum geht es in dieser Gruppe?"
               rows={3}
-              className="w-full resize-none rounded-2xl border border-[var(--color-border)] bg-[var(--color-canvas)] px-4 py-3 text-[15px] font-medium placeholder:text-[var(--color-subtle)] focus:border-[var(--color-brand)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-soft)]"
+              className="w-full resize-none rounded-2xl border border-[var(--color-border)] bg-[var(--color-canvas)] px-4 py-3 text-[15px] font-medium placeholder:text-[var(--color-subtle)] focus:border-[var(--color-brand)] focus:bg-[var(--color-panel)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-soft)]"
             />
           </div>
 

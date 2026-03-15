@@ -34,6 +34,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -99,21 +100,24 @@ export default function AccountPage() {
   const handleSave = async () => {
     if (!profile || isDemoEnv) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const { error } = await supabase
         .from("user_profiles")
-        .update({
+        .upsert({
+          id: profile.id,
           first_name: firstName.trim() || null,
           last_name: lastName.trim() || null,
           username: username.trim(),
           avatar_url: avatarUrl,
-        })
-        .eq("id", profile.id);
+        });
 
       if (error) throw error;
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => setSaved(false), 2500);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Speichern fehlgeschlagen";
+      setSaveError(msg);
       console.error("Error saving profile:", err);
     } finally {
       setSaving(false);
@@ -323,6 +327,21 @@ export default function AccountPage() {
               />
             </div>
           </div>
+
+          {/* Save Error */}
+          <AnimatePresence>
+            {saveError && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-4 rounded-[14px] px-4 py-3 text-[13px] font-medium"
+                style={{ background: "var(--color-danger-soft)", color: "var(--color-danger)", border: "1px solid rgba(220,38,38,0.15)" }}
+              >
+                {saveError}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Save Button */}
           <AnimatePresence>
@@ -562,11 +581,15 @@ function PwaTutorialModal({ onClose }: { onClose: () => void }) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 60 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-[28px] px-5 pt-6 pb-10"
+        className="fixed inset-x-0 bottom-0 z-50 rounded-t-[28px] px-5 pt-6"
         style={{
+          maxHeight: '90dvh',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: 'max(2.5rem, calc(env(safe-area-inset-bottom) + 1.5rem))',
           background: "var(--color-panel)",
           boxShadow: "var(--shadow-modal)",
-        }}
+        } as React.CSSProperties}
       >
         {/* Handle */}
         <div className="mx-auto mb-5 h-1 w-10 rounded-full" style={{ background: "var(--color-border)" }} />
