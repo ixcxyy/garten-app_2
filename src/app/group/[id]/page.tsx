@@ -3,11 +3,13 @@
 import React, { useCallback, useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings } from 'lucide-react';
+import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { Todo, Group } from '@/lib/types';
+import { Todo, Group, Poll } from '@/lib/types';
 import { TodoCard } from '@/components/TodoCard';
 import { CreateTodoModal } from '@/components/CreateTodoModal';
+import { CreatePollModal } from '@/components/CreatePollModal';
+import { PollCard } from '@/components/PollCard';
 import { GroupSettingsModal } from '@/components/dashboard/GroupSettingsModal';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -18,6 +20,7 @@ const MOCK_TODOS: Todo[] = [
     title: 'Tomaten gießen',
     description: 'Jeden Morgen wässern, besonders bei Hitze.',
     photo_url: null,
+    due_date: null,
     status: 'pending',
     created_at: new Date().toISOString(),
     creator_id: 'demo',
@@ -28,6 +31,7 @@ const MOCK_TODOS: Todo[] = [
     title: 'Unkraut jäten',
     description: 'Im Kräuterbereich hat sich viel angesammelt.',
     photo_url: null,
+    due_date: null,
     status: 'completed',
     created_at: new Date().toISOString(),
     creator_id: 'demo',
@@ -38,6 +42,7 @@ const MOCK_TODOS: Todo[] = [
     title: 'Kompostdienst Freitag',
     description: null,
     photo_url: null,
+    due_date: '2026-03-21',
     status: 'pending',
     created_at: new Date().toISOString(),
     creator_id: 'demo',
@@ -59,9 +64,12 @@ function GroupPageContent() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showFabMenu, setShowFabMenu] = useState(false);
+  const [polls, setPolls] = useState<Poll[]>([]);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'open' | 'done'>('open');
+  const [activeTab, setActiveTab] = useState<'open' | 'done' | 'polls'>('open');
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
 
   useEffect(() => {
@@ -121,6 +129,11 @@ function GroupPageContent() {
 
       if (todosError) throw todosError;
       setTodos(todosData || []);
+
+      // Fetch polls
+      const { data: pollsData } = await supabase
+        .from('polls').select('*').eq('group_id', id).order('created_at', { ascending: false });
+      setPolls(pollsData || []);
     } catch (error) {
       console.error('Error fetching group data:', error);
     } finally {
@@ -173,7 +186,7 @@ function GroupPageContent() {
 
   const openTodos = todos.filter(t => t.status === 'pending');
   const doneTodos = todos.filter(t => t.status === 'completed');
-  const displayedTodos = activeTab === 'open' ? openTodos : doneTodos;
+  const displayedTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? doneTodos : [];
   const completionPct = todos.length > 0 ? Math.round((doneTodos.length / todos.length) * 100) : 0;
 
   return (
@@ -301,6 +314,7 @@ function GroupPageContent() {
             {([
               ['open', 'Offen', openTodos.length] as const,
               ['done', 'Erledigt', doneTodos.length] as const,
+              ['polls', 'Abstimmungen', polls.length] as const,
             ]).map(([tab, label, count]) => (
               <button
                 key={tab}
@@ -338,10 +352,39 @@ function GroupPageContent() {
         </div>
       </header>
 
-      {/* Todo list */}
+      {/* Content */}
       <main className="px-4 pt-4 overflow-x-hidden">
         <AnimatePresence mode="wait">
-          {displayedTodos.length === 0 ? (
+          {activeTab === 'polls' ? (
+            /* Polls tab */
+            polls.length === 0 ? (
+              <motion.div
+                key="empty-polls"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="mt-10 flex flex-col items-center rounded-2xl py-16 text-center"
+                style={{ background: "var(--color-panel)", border: "1px dashed var(--color-border-strong)" }}
+              >
+                <div
+                  className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+                  style={{ background: "var(--color-interactive-bg)", border: "1px solid var(--color-interactive-border)", color: "var(--color-muted)" }}
+                >
+                  <BarChart3 size={22} strokeWidth={1.5} />
+                </div>
+                <p className="text-[15px] font-semibold" style={{ color: "var(--color-foreground)" }}>Keine Abstimmungen</p>
+                <p className="mt-1 text-sm" style={{ color: "var(--color-muted)" }}>Tippe auf + um eine Abstimmung zu starten</p>
+              </motion.div>
+            ) : (
+              <motion.div key="polls-list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2.5">
+                <AnimatePresence mode="popLayout">
+                  {polls.map(poll => (
+                    <PollCard key={poll.id} poll={poll} currentUserId={currentUserId} onDeleted={fetchGroupData} isDemoMode={isDemoMode} />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            )
+          ) : displayedTodos.length === 0 ? (
             <motion.div
               key={`empty-${activeTab}`}
               initial={{ opacity: 0, y: 8 }}
@@ -349,18 +392,11 @@ function GroupPageContent() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               className="mt-10 flex flex-col items-center rounded-2xl py-16 text-center"
-              style={{
-                background: "var(--color-panel)",
-                border: "1px dashed var(--color-border-strong)",
-              }}
+              style={{ background: "var(--color-panel)", border: "1px dashed var(--color-border-strong)" }}
             >
               <div
                 className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
-                style={{
-                  background: "var(--color-interactive-bg)",
-                  border: "1px solid var(--color-interactive-border)",
-                  color: "var(--color-muted)",
-                }}
+                style={{ background: "var(--color-interactive-bg)", border: "1px solid var(--color-interactive-border)", color: "var(--color-muted)" }}
               >
                 {activeTab === 'open' ? <ListTodo size={22} strokeWidth={1.5} /> : <CheckCheck size={22} strokeWidth={1.5} />}
               </div>
@@ -384,11 +420,7 @@ function GroupPageContent() {
             >
               <AnimatePresence mode="popLayout">
                 {displayedTodos.map(todo => (
-                  <TodoCard
-                    key={todo.id}
-                    todo={todo}
-                    onToggleComplete={toggleTodoComplete}
-                  />
+                  <TodoCard key={todo.id} todo={todo} onToggleComplete={toggleTodoComplete} />
                 ))}
               </AnimatePresence>
             </motion.div>
@@ -396,33 +428,82 @@ function GroupPageContent() {
         </AnimatePresence>
       </main>
 
-      {/* FAB */}
+      {/* FAB with menu */}
       <AnimatePresence>
-        {activeTab === 'open' && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileTap={{ scale: 0.9 }}
-            transition={{ type: "spring", stiffness: 400, damping: 24 }}
-            onClick={() => setIsModalOpen(true)}
-            className="fixed bottom-28 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full"
-            style={{
-              background: "var(--color-fab-bg)",
-              color: "var(--color-fab-fg)",
-              boxShadow: "var(--shadow-brand-lg)",
-            }}
-          >
-            <Plus size={24} strokeWidth={2.5} />
-          </motion.button>
+        {showFabMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-10"
+            onClick={() => setShowFabMenu(false)}
+          />
         )}
       </AnimatePresence>
+
+      <div className="fixed bottom-28 right-4 z-20 flex flex-col items-end gap-2">
+        <AnimatePresence>
+          {showFabMenu && (
+            <>
+              <motion.button
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 24, delay: 0.05 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => { setShowFabMenu(false); setIsPollModalOpen(true); }}
+                className="flex items-center gap-2.5 rounded-full px-4 py-3"
+                style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-modal)" }}
+              >
+                <BarChart3 size={16} style={{ color: "var(--color-brand)" }} />
+                <span className="text-[13px] font-semibold" style={{ color: "var(--color-foreground)" }}>Abstimmung</span>
+              </motion.button>
+              <motion.button
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 24 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => { setShowFabMenu(false); setIsModalOpen(true); }}
+                className="flex items-center gap-2.5 rounded-full px-4 py-3"
+                style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-modal)" }}
+              >
+                <ListTodo size={16} style={{ color: "var(--color-brand)" }} />
+                <span className="text-[13px] font-semibold" style={{ color: "var(--color-foreground)" }}>Aufgabe</span>
+              </motion.button>
+            </>
+          )}
+        </AnimatePresence>
+
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setShowFabMenu(!showFabMenu)}
+          className="flex h-14 w-14 items-center justify-center rounded-full"
+          style={{
+            background: "var(--color-fab-bg)",
+            color: "var(--color-fab-fg)",
+            boxShadow: "var(--shadow-brand-lg)",
+          }}
+        >
+          <motion.div animate={{ rotate: showFabMenu ? 45 : 0 }} transition={{ duration: 0.2 }}>
+            <Plus size={24} strokeWidth={2.5} />
+          </motion.div>
+        </motion.button>
+      </div>
 
       <AnimatePresence>
         {isModalOpen && (
           <CreateTodoModal
             groupId={id as string}
             onClose={() => setIsModalOpen(false)}
+            onCreated={fetchGroupData}
+            isDemoMode={isDemoMode}
+          />
+        )}
+        {isPollModalOpen && (
+          <CreatePollModal
+            groupId={id as string}
+            onClose={() => setIsPollModalOpen(false)}
             onCreated={fetchGroupData}
             isDemoMode={isDemoMode}
           />

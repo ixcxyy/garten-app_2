@@ -658,7 +658,7 @@ function DashboardContent() {
           >
             Willkommen zurück{greetingName ? "," : "!"}{" "}
             {greetingName && (
-              <span style={{ color: "var(--color-muted)", display: "inline-block" }}>
+              <span style={{ color: "var(--color-brand)", display: "inline-block" }}>
                 {greetingName}
               </span>
             )}

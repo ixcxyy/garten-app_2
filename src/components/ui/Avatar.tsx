@@ -38,7 +38,7 @@ export function Avatar({ className, name, size = "md", src }: AvatarProps) {
     >
       <div
         className={cn(
-          "relative overflow-hidden rounded-full border-2 border-white bg-[var(--color-brand-soft)] text-center font-semibold tracking-[-0.03em] text-[var(--color-brand)] shadow-soft",
+          "relative overflow-hidden rounded-full border-2 border-[var(--color-brand-soft)] bg-[var(--color-brand-soft)] text-center font-semibold tracking-[-0.03em] text-[var(--color-brand)] shadow-soft",
           sizeClasses[size],
         )}
       >

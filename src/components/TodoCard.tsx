@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Camera } from "lucide-react";
+import { Check, Camera, Calendar } from "lucide-react";
 import { Todo } from "@/lib/types";
 import { cn } from "@/utils/cn";
 
@@ -87,6 +87,21 @@ export const TodoCard = ({ todo, onToggleComplete }: TodoCardProps) => {
             >
               {todo.description}
             </p>
+          )}
+
+          {todo.due_date && (
+            <div
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1"
+              style={{
+                background: "var(--color-brand-soft)",
+                color: "var(--color-brand)",
+              }}
+            >
+              <Calendar size={11} strokeWidth={2} />
+              <span className="text-[11px] font-semibold">
+                {new Date(todo.due_date).toLocaleDateString("de-DE", { day: "numeric", month: "short" })}
+              </span>
+            </div>
           )}
 
           {todo.photo_url && (

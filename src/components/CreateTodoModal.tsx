@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Loader2, Camera, FileImage } from 'lucide-react';
+import { X, Plus, Loader2, Camera, FileImage, Calendar } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { PhotoUpload } from './PhotoUpload';
 
@@ -18,6 +18,7 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState('');
   const [showPhotoSection, setShowPhotoSection] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,6 +42,7 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
         title: title.trim(),
         description: description.trim() || null,
         photo_url: photoUrl,
+        due_date: dueDate || null,
         status: 'pending',
         creator_id: userData.user.id,
       }]);
@@ -175,6 +177,42 @@ export const CreateTodoModal: React.FC<CreateTodoModalProps> = ({ groupId, onClo
                 e.currentTarget.style.background = "var(--color-canvas)";
               }}
             />
+          </div>
+
+          {/* Due Date */}
+          <div>
+            <label
+              className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--color-subtle)" }}
+            >
+              Fälligkeitsdatum
+            </label>
+            <div className="relative">
+              <Calendar
+                size={15}
+                className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: "var(--color-muted)" }}
+              />
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full rounded-2xl pl-10 pr-4 py-3.5 text-[15px] font-medium transition-all focus:outline-none"
+                style={{
+                  background: "var(--color-canvas)",
+                  border: "1.5px solid var(--color-border)",
+                  color: dueDate ? "var(--color-foreground)" : "var(--color-subtle)",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-brand)";
+                  e.currentTarget.style.background = "var(--color-panel)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-border)";
+                  e.currentTarget.style.background = "var(--color-canvas)";
+                }}
+              />
+            </div>
           </div>
 
           {/* Photo toggle button */}

@@ -93,7 +93,8 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({ group, o
         initial={{ opacity: 0, scale: 0.9, y: 40 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] bg-white shadow-2xl ring-1 ring-black/5 dark:bg-zinc-900"
+        className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] shadow-2xl"
+        style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)" }}
       >
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-8 py-6">
           <div className="flex items-center gap-3">
@@ -136,7 +137,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({ group, o
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-[18px] border border-[var(--color-border)] bg-[var(--color-canvas)] px-5 py-4 text-[15px] font-medium transition-all focus:border-[var(--color-brand)] focus:bg-white focus:ring-4 focus:ring-[var(--color-brand-soft)]"
+                  className="w-full rounded-[18px] border border-[var(--color-border)] bg-[var(--color-canvas)] px-5 py-4 text-[15px] font-medium text-[var(--color-foreground)] transition-all focus:border-[var(--color-brand)] focus:bg-[var(--color-panel)] focus:ring-4 focus:ring-[var(--color-brand-soft)] focus:outline-none"
                   required
                 />
               </div>
@@ -149,7 +150,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({ group, o
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
-                  className="w-full resize-none rounded-[18px] border border-[var(--color-border)] bg-[var(--color-canvas)] px-5 py-4 text-[15px] font-medium transition-all focus:border-[var(--color-brand)] focus:bg-white focus:ring-4 focus:ring-[var(--color-brand-soft)]"
+                  className="w-full resize-none rounded-[18px] border border-[var(--color-border)] bg-[var(--color-canvas)] px-5 py-4 text-[15px] font-medium text-[var(--color-foreground)] transition-all focus:border-[var(--color-brand)] focus:bg-[var(--color-panel)] focus:ring-4 focus:ring-[var(--color-brand-soft)] focus:outline-none"
                 />
               </div>
 

@@ -32,8 +32,33 @@ export interface Todo {
   photo_url: string | null;
   status: 'pending' | 'completed';
   creator_id: string | null;
+  due_date: string | null;
   created_at: string;
   user_profile?: UserProfile;
+}
+
+export interface Poll {
+  id: string;
+  group_id: string;
+  question: string;
+  created_by: string | null;
+  created_at: string;
+  closes_at: string | null;
+}
+
+export interface PollOption {
+  id: string;
+  poll_id: string;
+  label: string;
+  created_at: string;
+  vote_count?: number;
+}
+
+export interface PollVote {
+  poll_id: string;
+  option_id: string;
+  user_id: string;
+  created_at: string;
 }
 
 export interface Notification {

@@ -40,15 +40,12 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
-    const initials = getInitials(formData.firstName, formData.lastName);
-    const avatarUrl = `https://ui-avatars.com/api/?name=${initials}&background=random&color=fff&size=256`;
 
     const { data: signUpData, error: signUpError } = await signUp(formData.email, formData.password, {
       data: {
         username: formData.username,
         first_name: formData.firstName,
         last_name: formData.lastName,
-        avatar_url: avatarUrl,
       },
     });
 
