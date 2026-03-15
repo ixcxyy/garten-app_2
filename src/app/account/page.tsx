@@ -139,9 +139,17 @@ export default function AccountPage() {
       const {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(path);
+
+      // Immediately persist the new avatar_url to the profile
+      await supabase
+        .from("user_profiles")
+        .upsert({ id: profile.id, avatar_url: publicUrl });
+
       setAvatarUrl(publicUrl);
+      setProfile((prev) => prev ? { ...prev, avatar_url: publicUrl } : prev);
     } catch (err) {
       console.error("Avatar upload error:", err);
+      setSaveError("Bild konnte nicht hochgeladen werden.");
     }
   };
 

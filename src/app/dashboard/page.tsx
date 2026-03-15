@@ -472,7 +472,7 @@ function DashboardContent() {
 
           <div className="relative">
             <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowProfileMenu(!showProfileMenu)}>
-              <Avatar name={profileDisplayName} className="h-7 w-7 text-[10px]" />
+              <Avatar name={profileDisplayName} src={userProfile?.avatar_url} className="h-7 w-7 text-[10px]" />
             </motion.button>
 
             <AnimatePresence>
@@ -638,10 +638,12 @@ function DashboardContent() {
               color: "var(--color-foreground)",
             }}
           >
-            Hallo,{" "}
-            <span style={{ color: "var(--color-muted)", display: "inline-block" }}>
-              {greetingName}
-            </span>
+            Willkommen zurück{greetingName ? "," : "!"}{" "}
+            {greetingName && (
+              <span style={{ color: "var(--color-muted)", display: "inline-block" }}>
+                {greetingName}
+              </span>
+            )}
           </h1>
 
           <p

@@ -14,11 +14,11 @@ export function getProfileDisplayName(profile: ProfileIdentity) {
     .filter(Boolean)
     .join(" ");
 
-  return fullName || profile?.username?.trim() || "Gärtner";
+  return fullName || profile?.username?.trim() || "";
 }
 
 export function getProfileGreetingName(profile: ProfileIdentity) {
-  return profile?.first_name?.trim() || profile?.username?.trim() || "Gärtner";
+  return profile?.first_name?.trim() || profile?.username?.trim() || "";
 }
 
 export function getProfileSecondaryName(profile: ProfileIdentity) {
