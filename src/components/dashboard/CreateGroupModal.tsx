@@ -74,7 +74,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onC
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" data-modal-open="true">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
