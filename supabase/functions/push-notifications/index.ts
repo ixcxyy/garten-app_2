@@ -34,14 +34,16 @@ serve(async (req) => {
     let actorId = "";
 
     if (type === 'REMINDER') {
-      notificationTitle = "🌱 Garten-Erinnerung";
-      notificationBody = reminder_type === '1d' 
-        ? "Du hast Aufgaben, die morgen fällig sind!" 
-        : "Vergiss nicht deine anstehenden Aufgaben.";
-      
-      // For reminders, we might notify ALL users with active subscriptions
-      // or we could pass specific userIds in the payload.
-      // For now, let's assume global reminder if no userIds provided.
+      groupId = record?.group_id || "";
+      targetUrl = groupId ? `/group/${groupId}` : "/dashboard";
+      const taskTitle = record?.title || "eine Aufgabe";
+      if (reminder_type === '1d') {
+        notificationTitle = "⏰ Morgen fällig";
+        notificationBody = `„${taskTitle}" ist morgen fällig!`;
+      } else {
+        notificationTitle = "📅 In 7 Tagen fällig";
+        notificationBody = `„${taskTitle}" ist in einer Woche fällig.`;
+      }
     } else if (table === "todos") {
       groupId = record.group_id;
       actorId = record.creator_id;
@@ -61,11 +63,19 @@ serve(async (req) => {
     // Identify recipients
     let userIds: string[] = [];
     if (type === 'REMINDER') {
-      // Get all users who have a subscription
-      const { data: allSubscribers } = await supabase
-        .from("push_subscriptions")
-        .select("user_id");
-      userIds = [...new Set((allSubscribers || []).map(s => s.user_id))];
+      if (groupId) {
+        // Get group members for the specific group
+        const { data: members } = await supabase
+          .from("group_members")
+          .select("user_id")
+          .eq("group_id", groupId);
+        userIds = (members || []).map(m => m.user_id);
+      } else {
+        const { data: allSubscribers } = await supabase
+          .from("push_subscriptions")
+          .select("user_id");
+        userIds = [...new Set((allSubscribers || []).map(s => s.user_id))];
+      }
     } else {
       // Get group members except the actor
       const { data: members, error: membersError } = await supabase
