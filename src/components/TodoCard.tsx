@@ -3,11 +3,18 @@
 import Image from "next/image";
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Camera, Calendar, Hand, SmilePlus } from "lucide-react";
-import { Todo, TaskReaction, UserProfile } from "@/lib/types";
+import { Check, Camera, Calendar, Hand, SmilePlus, ArrowUp, ArrowDown, Minus, AlertTriangle } from "lucide-react";
+import { Todo, TaskReaction, UserProfile, Label } from "@/lib/types";
 import { cn } from "@/utils/cn";
 
 const EMOJI_OPTIONS = ["👍", "❤️", "🌱", "💪", "🎉", "👏"];
+
+const PRIORITY_ICON = {
+  low: { icon: ArrowDown, color: '#6B7280' },
+  normal: { icon: Minus, color: '#3B82F6' },
+  high: { icon: ArrowUp, color: '#F59E0B' },
+  urgent: { icon: AlertTriangle, color: '#EF4444' },
+} as const;
 
 interface TodoCardProps {
   todo: Todo;
@@ -15,10 +22,13 @@ interface TodoCardProps {
   currentUserId?: string;
   assignees?: { user_id: string; user_profile?: UserProfile }[];
   reactions?: TaskReaction[];
+  labels?: Label[];
+  checklistProgress?: { done: number; total: number };
   onAssign?: () => void;
   onUnassign?: () => void;
   onReact?: (emoji: string) => void;
   onUnreact?: (emoji: string) => void;
+  onTitleClick?: () => void;
   isAssigned?: boolean;
   isDemoMode?: boolean;
 }
@@ -91,10 +101,13 @@ export const TodoCard = ({
   currentUserId,
   assignees = [],
   reactions = [],
+  labels = [],
+  checklistProgress,
   onAssign,
   onUnassign,
   onReact,
   onUnreact,
+  onTitleClick,
   isAssigned = false,
 }: TodoCardProps) => {
   const isCompleted = todo.status === "completed";
@@ -162,16 +175,37 @@ export const TodoCard = ({
 
         {/* Content */}
         <div className="min-w-0 flex-1 overflow-hidden">
-          <p
-            className={cn(
-              "text-[15px] font-semibold leading-snug tracking-tight",
-              isCompleted
-                ? "line-through text-[var(--color-subtle)]"
-                : "text-[var(--color-foreground)]",
-            )}
-          >
-            {todo.title}
-          </p>
+          {/* Labels row */}
+          {labels.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-1">
+              {labels.map(l => (
+                <span key={l.id} className="inline-block rounded-full px-2 py-0.5 text-[9px] font-bold text-white" style={{ background: l.color }}>
+                  {l.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            {/* Priority indicator */}
+            {todo.priority && todo.priority !== 'normal' && (() => {
+              const cfg = PRIORITY_ICON[todo.priority];
+              const Icon = cfg.icon;
+              return <Icon size={13} style={{ color: cfg.color }} className="shrink-0" />;
+            })()}
+            <p
+              onClick={onTitleClick}
+              className={cn(
+                "text-[15px] font-semibold leading-snug tracking-tight",
+                isCompleted
+                  ? "line-through text-[var(--color-subtle)]"
+                  : "text-[var(--color-foreground)]",
+                onTitleClick && !isCompleted && "cursor-pointer active:opacity-70",
+              )}
+            >
+              {todo.title}
+            </p>
+          </div>
 
           {todo.description && (
             <p
@@ -180,6 +214,18 @@ export const TodoCard = ({
             >
               {todo.description}
             </p>
+          )}
+
+          {/* Checklist progress */}
+          {checklistProgress && checklistProgress.total > 0 && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--color-border-strong)" }}>
+                <div className="h-full rounded-full" style={{ background: "var(--color-brand)", width: `${(checklistProgress.done / checklistProgress.total) * 100}%`, transition: "width 0.3s" }} />
+              </div>
+              <span className="text-[10px] font-bold" style={{ color: "var(--color-muted)" }}>
+                {checklistProgress.done}/{checklistProgress.total}
+              </span>
+            </div>
           )}
 
           {/* Meta row: due date + assignees */}
@@ -241,11 +287,12 @@ export const TodoCard = ({
                   src={todo.photo_url}
                   alt={todo.title}
                   width={400}
-                  height={200}
+                  height={300}
                   className={cn(
-                    "h-36 w-full object-cover transition-all duration-300",
+                    "w-full max-h-48 object-contain transition-all duration-300",
                     isCompleted && "grayscale opacity-50",
                   )}
+                  style={{ background: "var(--color-interactive-bg)" }}
                 />
                 <div
                   className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full px-2 py-0.5"

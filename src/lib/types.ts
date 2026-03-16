@@ -31,8 +31,35 @@ export interface Todo {
   description: string | null;
   photo_url: string | null;
   status: 'pending' | 'completed';
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
   creator_id: string | null;
   due_date: string | null;
+  created_at: string;
+  user_profile?: UserProfile;
+}
+
+export interface Label {
+  id: string;
+  group_id: string;
+  name: string;
+  color: string;
+  created_at: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  todo_id: string;
+  title: string;
+  is_completed: boolean;
+  position: number;
+  created_at: string;
+}
+
+export interface TodoComment {
+  id: string;
+  todo_id: string;
+  user_id: string;
+  content: string;
   created_at: string;
   user_profile?: UserProfile;
 }

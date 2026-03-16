@@ -5,12 +5,13 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3, Users, EyeOff, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { Todo, Group, Poll, TaskReaction, UserProfile, GroupMember } from '@/lib/types';
+import { Todo, Group, Poll, TaskReaction, UserProfile, GroupMember, Label } from '@/lib/types';
 import { TodoCard } from '@/components/TodoCard';
 import { CreateTodoModal } from '@/components/CreateTodoModal';
 import { CreatePollModal } from '@/components/CreatePollModal';
 import { PollCard } from '@/components/PollCard';
 import { GroupSettingsModal } from '@/components/dashboard/GroupSettingsModal';
+import { TaskDetailModal } from '@/components/TaskDetailModal';
 import { useNotifications } from '@/hooks/useNotifications';
 
 type AssigneeMap = Record<string, { user_id: string; user_profile?: UserProfile }[]>;
@@ -80,6 +81,10 @@ function GroupPageContent() {
   const [assigneeMap, setAssigneeMap] = useState<AssigneeMap>({});
   const [reactionMap, setReactionMap] = useState<ReactionMap>({});
   const [myAssignments, setMyAssignments] = useState<AssignedSet>(new Set());
+  const [groupLabels, setGroupLabels] = useState<Label[]>([]);
+  const [todoLabelMap, setTodoLabelMap] = useState<Record<string, Label[]>>({});
+  const [checklistMap, setChecklistMap] = useState<Record<string, { done: number; total: number }>>({});
+  const [detailTodo, setDetailTodo] = useState<Todo | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('hide_completed');
@@ -203,6 +208,32 @@ function GroupPageContent() {
         }
         setReactionMap(rMap);
       }
+
+      // Fetch labels, todo_labels, and checklist progress
+      const [labelsRes, todoLabelsRes, checklistRes] = await Promise.all([
+        supabase.from('labels').select('*').eq('group_id', id),
+        todoIds.length > 0 ? supabase.from('todo_labels').select('todo_id, label_id').in('todo_id', todoIds) : Promise.resolve({ data: [] }),
+        todoIds.length > 0 ? supabase.from('checklists').select('todo_id, is_completed').in('todo_id', todoIds) : Promise.resolve({ data: [] }),
+      ]);
+
+      const allLabels = labelsRes.data || [];
+      setGroupLabels(allLabels);
+      const labelById = allLabels.reduce<Record<string, Label>>((acc, l) => { acc[l.id] = l; return acc; }, {});
+
+      const tlMap: Record<string, Label[]> = {};
+      for (const tl of (todoLabelsRes.data || [])) {
+        if (!tlMap[tl.todo_id]) tlMap[tl.todo_id] = [];
+        if (labelById[tl.label_id]) tlMap[tl.todo_id].push(labelById[tl.label_id]);
+      }
+      setTodoLabelMap(tlMap);
+
+      const clMap: Record<string, { done: number; total: number }> = {};
+      for (const cl of (checklistRes.data || [])) {
+        if (!clMap[cl.todo_id]) clMap[cl.todo_id] = { done: 0, total: 0 };
+        clMap[cl.todo_id].total++;
+        if (cl.is_completed) clMap[cl.todo_id].done++;
+      }
+      setChecklistMap(clMap);
 
       // Fetch polls
       const { data: pollsData } = await supabase
@@ -668,11 +699,14 @@ function GroupPageContent() {
                     currentUserId={currentUserId}
                     assignees={assigneeMap[todo.id] || []}
                     reactions={reactionMap[todo.id] || []}
+                    labels={todoLabelMap[todo.id] || []}
+                    checklistProgress={checklistMap[todo.id]}
                     isAssigned={myAssignments.has(todo.id)}
                     onAssign={() => handleAssign(todo.id)}
                     onUnassign={() => handleUnassign(todo.id)}
                     onReact={(emoji) => handleReact(todo.id, emoji)}
                     onUnreact={(emoji) => handleUnreact(todo.id, emoji)}
+                    onTitleClick={() => setDetailTodo(todo)}
                     isDemoMode={isDemoMode}
                   />
                 ))}
@@ -769,6 +803,18 @@ function GroupPageContent() {
             onUpdated={fetchGroupData}
             isDemoMode={isDemoMode}
             isOwner={currentUserId === group?.owner_id}
+          />
+        )}
+        {detailTodo && (
+          <TaskDetailModal
+            todo={detailTodo}
+            groupId={id as string}
+            currentUserId={currentUserId}
+            labels={groupLabels}
+            todoLabels={(todoLabelMap[detailTodo.id] || []).map(l => l.id)}
+            onClose={() => setDetailTodo(null)}
+            onUpdated={() => { setDetailTodo(null); fetchGroupData(); }}
+            isDemoMode={isDemoMode}
           />
         )}
       </AnimatePresence>
