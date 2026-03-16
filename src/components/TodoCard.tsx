@@ -23,6 +23,68 @@ interface TodoCardProps {
   isDemoMode?: boolean;
 }
 
+const AssigneeModal = ({
+  assignees,
+  onClose,
+}: {
+  assignees: { user_id: string; user_profile?: UserProfile }[];
+  onClose: () => void;
+}) => (
+  <>
+    <motion.div
+      className="fixed inset-0 z-50 bg-black/40"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    />
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+      className="fixed left-1/2 top-1/2 z-50 w-[min(320px,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl p-5"
+      style={{
+        background: "var(--color-panel)",
+        border: "1px solid var(--color-border)",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.2)",
+      }}
+    >
+      <p className="text-[14px] font-bold mb-3" style={{ color: "var(--color-foreground)" }}>
+        Teilnehmer ({assignees.length})
+      </p>
+      <div className="space-y-2 max-h-60 overflow-y-auto">
+        {assignees.map((a) => {
+          const name = a.user_profile?.first_name
+            ? `${a.user_profile.first_name}${a.user_profile.last_name ? " " + a.user_profile.last_name : ""}`
+            : a.user_profile?.username || "Unbekannt";
+          return (
+            <div key={a.user_id} className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: "var(--color-interactive-bg)" }}>
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                style={{ background: "var(--color-brand)", color: "white" }}
+              >
+                {a.user_profile?.avatar_url ? (
+                  <img src={a.user_profile.avatar_url} className="h-full w-full rounded-full object-cover" alt="" />
+                ) : (
+                  name.charAt(0).toUpperCase()
+                )}
+              </div>
+              <span className="text-[13px] font-semibold" style={{ color: "var(--color-foreground)" }}>{name}</span>
+            </div>
+          );
+        })}
+      </div>
+      <button
+        onClick={onClose}
+        className="mt-3 w-full rounded-xl py-2 text-[13px] font-semibold"
+        style={{ background: "var(--color-interactive-bg)", color: "var(--color-muted)", border: "1px solid var(--color-border)" }}
+      >
+        Schließen
+      </button>
+    </motion.div>
+  </>
+);
+
 export const TodoCard = ({
   todo,
   onToggleComplete,
@@ -37,6 +99,7 @@ export const TodoCard = ({
 }: TodoCardProps) => {
   const isCompleted = todo.status === "completed";
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAssignees, setShowAssignees] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const reactionGroups = reactions.reduce<Record<string, { count: number; hasOwn: boolean }>>((acc, r) => {
@@ -138,7 +201,7 @@ export const TodoCard = ({
               )}
 
               {assignees.length > 0 && (
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-interactive-bg)] pl-1 pr-2 py-0.5">
+                <button onClick={() => setShowAssignees(true)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-interactive-bg)] pl-1 pr-2 py-0.5 cursor-pointer transition-all active:scale-95">
                   <div className="flex -space-x-1">
                     {assignees.slice(0, 3).map((a) => {
                       const name = a.user_profile?.first_name || a.user_profile?.username || "?";
@@ -161,7 +224,7 @@ export const TodoCard = ({
                   <span className="text-[9px] font-bold text-[var(--color-subtle)]">
                     {assignees.length}
                   </span>
-                </div>
+                </button>
               )}
             </div>
           )}
@@ -288,6 +351,11 @@ export const TodoCard = ({
           )}
         </div>
       </div>
+      <AnimatePresence>
+        {showAssignees && assignees.length > 0 && (
+          <AssigneeModal assignees={assignees} onClose={() => setShowAssignees(false)} />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
