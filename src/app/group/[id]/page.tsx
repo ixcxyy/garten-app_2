@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3, Users, EyeOff, Eye, LayoutGrid, List } from 'lucide-react';
+import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3, Users, EyeOff, Eye, LayoutGrid, List, MessageCircle, MoreHorizontal } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Todo, Group, Poll, TaskReaction, UserProfile, GroupMember, Label } from '@/lib/types';
 import { TodoCard } from '@/components/TodoCard';
@@ -12,6 +12,7 @@ import { CreatePollModal } from '@/components/CreatePollModal';
 import { PollCard } from '@/components/PollCard';
 import { GroupSettingsModal } from '@/components/dashboard/GroupSettingsModal';
 import { TaskDetailModal } from '@/components/TaskDetailModal';
+import TaskCommentsModal from '@/components/TaskCommentsModal';
 import { useNotifications } from '@/hooks/useNotifications';
 
 type AssigneeMap = Record<string, { user_id: string; user_profile?: UserProfile }[]>;
@@ -88,6 +89,7 @@ function GroupPageContent() {
   const [todoLabelMap, setTodoLabelMap] = useState<Record<string, Label[]>>({});
   const [checklistMap, setChecklistMap] = useState<Record<string, { done: number; total: number }>>({});
   const [detailTodo, setDetailTodo] = useState<Todo | null>(null);
+  const [commentTodo, setCommentTodo] = useState<Todo | null>(null);
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const [commentCountMap, setCommentCountMap] = useState<Record<string, number>>({});
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
@@ -174,7 +176,7 @@ function GroupPageContent() {
       setTodos(todosData);
       // Keep detailTodo in sync with fresh data (don't close modal)
       setDetailTodo(prev => prev ? todosData.find(t => t.id === prev.id) || null : null);
-
+      setCommentTodo(prev => prev ? todosData.find(t => t.id === prev.id) || null : null);
       // Fetch member profiles
       const memberRows = membersRes.data || [];
       if (memberRows.length > 0) {
@@ -369,6 +371,25 @@ function GroupPageContent() {
     await supabase.from('todos').delete().eq('id', todoId);
   };
 
+  const handleUpdatePriority = async (todoId: string, newPriority: 'low' | 'normal' | 'high' | 'urgent') => {
+    // Optimistic update
+    setTodos(prev => prev.map(t => t.id === todoId ? { ...t, priority: newPriority } : t));
+    
+    if (isDemoMode) return;
+    
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .update({ priority: newPriority })
+        .eq('id', todoId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating priority:', error);
+      void fetchGroupData(true);
+    }
+  };
+
   const handleUnreact = async (todoId: string, emoji: string) => {
     if (!currentUserId || isDemoMode) return;
     setReactionMap(prev => ({
@@ -408,10 +429,14 @@ function GroupPageContent() {
 
   const openTodos = todos.filter(t => t.status === 'pending');
   const doneTodos = todos.filter(t => t.status === 'completed');
-  const unfilteredTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? (hideCompleted ? [] : doneTodos) : [];
-  const displayedTodos = filterLabel
-    ? unfilteredTodos.filter(t => (todoLabelMap[t.id] || []).some(l => l.id === filterLabel))
-    : unfilteredTodos;
+
+  const displayedTodos = React.useMemo(() => {
+    const unfilteredTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? (hideCompleted ? [] : doneTodos) : [];
+    return filterLabel
+      ? unfilteredTodos.filter(t => (todoLabelMap[t.id] || []).some(l => l.id === filterLabel))
+      : unfilteredTodos;
+  }, [activeTab, openTodos, doneTodos, hideCompleted, filterLabel, todoLabelMap]);
+
   const dueTodos = todos.filter(t => t.due_date !== null);
   const doneDueTodos = dueTodos.filter(t => t.status === 'completed');
   const completionPct = dueTodos.length > 0 ? Math.round((doneDueTodos.length / dueTodos.length) * 100) : 0;
@@ -565,7 +590,7 @@ function GroupPageContent() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className="relative flex-1 rounded-[14px] py-2 text-[12px] font-semibold transition-colors"
+                className="relative flex-1 rounded-[14px] py-2 text-[11px] font-bold transition-colors"
                 style={{
                   color: activeTab === tab ? "var(--color-foreground)" : "var(--color-muted)",
                 }}
@@ -578,11 +603,11 @@ function GroupPageContent() {
                     transition={{ type: "spring", stiffness: 500, damping: 35 }}
                   />
                 )}
-                <span className="relative z-10">
-                  {label}
+                <span className="relative z-10 flex items-center justify-center gap-1 px-1">
+                  <span className="truncate">{label}</span>
                   {count > 0 && (
                     <span
-                      className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold"
+                      className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
                       style={{
                         background: activeTab === tab ? "var(--color-brand-soft)" : "transparent",
                         color: activeTab === tab ? "var(--color-brand)" : "var(--color-subtle)",
@@ -827,7 +852,9 @@ function GroupPageContent() {
                     onReact={(emoji) => handleReact(todo.id, emoji)}
                     onUnreact={(emoji) => handleUnreact(todo.id, emoji)}
                     onTitleClick={() => setDetailTodo(todo)}
+                    onCommentClick={() => setCommentTodo(todo)}
                     onDelete={() => handleDeleteTodo(todo.id)}
+                    onUpdatePriority={handleUpdatePriority}
                     isDemoMode={isDemoMode}
                   />
                 ))}
@@ -878,10 +905,21 @@ function GroupPageContent() {
                   const dist = Math.hypot(dx, dy);
                   if (lastDist > 0) {
                     const ratio = dist / lastDist;
-                    setBoardTransform(prev => ({
-                      ...prev,
-                      scale: Math.min(3, Math.max(0.3, prev.scale * ratio)),
-                    }));
+                    const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                    const rect = el.getBoundingClientRect();
+                    const px = centerX - rect.left;
+                    const py = centerY - rect.top;
+
+                    setBoardTransform(prev => {
+                      const newScale = Math.min(3, Math.max(0.3, prev.scale * ratio));
+                      const scaleRatio = newScale / prev.scale;
+                      return {
+                        scale: newScale,
+                        x: px - (px - prev.x) * scaleRatio,
+                        y: py - (py - prev.y) * scaleRatio,
+                      };
+                    });
                   }
                   lastDist = dist;
                 }
@@ -907,10 +945,19 @@ function GroupPageContent() {
             onWheel={(e) => {
               e.preventDefault();
               const delta = -e.deltaY * 0.002;
-              setBoardTransform(prev => ({
-                ...prev,
-                scale: Math.min(3, Math.max(0.3, prev.scale * (1 + delta))),
-              }));
+              const rect = e.currentTarget.getBoundingClientRect();
+              const px = e.clientX - rect.left;
+              const py = e.clientY - rect.top;
+
+              setBoardTransform(prev => {
+                const newScale = Math.min(3, Math.max(0.3, prev.scale * (1 + delta)));
+                const scaleRatio = newScale / prev.scale;
+                return {
+                  scale: newScale,
+                  x: px - (px - prev.x) * scaleRatio,
+                  y: py - (py - prev.y) * scaleRatio,
+                };
+              });
             }}
           >
             <motion.div
@@ -936,7 +983,7 @@ function GroupPageContent() {
                   <div className="flex flex-col gap-3">
                     {openTodos.map(todo => (
                       <div key={todo.id} data-card>
-                        <TodoCard {...{ todo, onToggleComplete: toggleTodoComplete, currentUserId, assignees: assigneeMap[todo.id] || [], reactions: reactionMap[todo.id] || [], labels: todoLabelMap[todo.id] || [], checklistProgress: checklistMap[todo.id], commentCount: commentCountMap[todo.id] || 0, isAssigned: myAssignments.has(todo.id), onAssign: () => handleAssign(todo.id), onUnassign: () => handleUnassign(todo.id), onReact: (emo) => handleReact(todo.id, emo), onUnreact: (emo) => handleUnreact(todo.id, emo), onTitleClick: () => setDetailTodo(todo), onDelete: () => handleDeleteTodo(todo.id), isDemoMode }} />
+                        <TodoCard {...{ todo, onToggleComplete: toggleTodoComplete, currentUserId, assignees: assigneeMap[todo.id] || [], reactions: reactionMap[todo.id] || [], labels: todoLabelMap[todo.id] || [], checklistProgress: checklistMap[todo.id], commentCount: commentCountMap[todo.id] || 0, isAssigned: myAssignments.has(todo.id), onAssign: () => handleAssign(todo.id), onUnassign: () => handleUnassign(todo.id), onReact: (emo) => handleReact(todo.id, emo), onUnreact: (emo) => handleUnreact(todo.id, emo), onTitleClick: () => setDetailTodo(todo), onCommentClick: () => setCommentTodo(todo), onDelete: () => handleDeleteTodo(todo.id), onUpdatePriority: handleUpdatePriority, isDemoMode }} />
                       </div>
                     ))}
                     {openTodos.length === 0 && (
@@ -956,7 +1003,7 @@ function GroupPageContent() {
                   <div className="flex flex-col gap-3">
                     {doneTodos.map(todo => (
                       <div key={todo.id} data-card>
-                        <TodoCard {...{ todo, onToggleComplete: toggleTodoComplete, currentUserId, assignees: assigneeMap[todo.id] || [], reactions: reactionMap[todo.id] || [], labels: todoLabelMap[todo.id] || [], checklistProgress: checklistMap[todo.id], commentCount: commentCountMap[todo.id] || 0, isAssigned: myAssignments.has(todo.id), onAssign: () => handleAssign(todo.id), onUnassign: () => handleUnassign(todo.id), onReact: (emo) => handleReact(todo.id, emo), onUnreact: (emo) => handleUnreact(todo.id, emo), onTitleClick: () => setDetailTodo(todo), onDelete: () => handleDeleteTodo(todo.id), isDemoMode }} />
+                        <TodoCard {...{ todo, onToggleComplete: toggleTodoComplete, currentUserId, assignees: assigneeMap[todo.id] || [], reactions: reactionMap[todo.id] || [], labels: todoLabelMap[todo.id] || [], checklistProgress: checklistMap[todo.id], commentCount: commentCountMap[todo.id] || 0, isAssigned: myAssignments.has(todo.id), onAssign: () => handleAssign(todo.id), onUnassign: () => handleUnassign(todo.id), onReact: (emo) => handleReact(todo.id, emo), onUnreact: (emo) => handleUnreact(todo.id, emo), onTitleClick: () => setDetailTodo(todo), onDelete: () => handleDeleteTodo(todo.id), onUpdatePriority: handleUpdatePriority, isDemoMode }} />
                       </div>
                     ))}
                     {doneTodos.length === 0 && (
@@ -1091,6 +1138,14 @@ function GroupPageContent() {
             todoLabels={(todoLabelMap[detailTodo.id] || []).map(l => l.id)}
             onClose={() => setDetailTodo(null)}
             onUpdated={() => fetchGroupData(true)}
+            isDemoMode={isDemoMode}
+          />
+        )}
+        {commentTodo && (
+          <TaskCommentsModal
+            todo={commentTodo}
+            currentUserId={currentUserId}
+            onClose={() => setCommentTodo(null)}
             isDemoMode={isDemoMode}
           />
         )}

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check, Calendar, Hand, SmilePlus, ArrowUp, ArrowDown, Minus, AlertTriangle,
@@ -42,6 +42,8 @@ interface TodoCardProps {
   onUnreact?: (emoji: string) => void;
   onTitleClick?: () => void;
   onDelete?: () => void;
+  onCommentClick?: () => void;
+  onUpdatePriority?: (id: string, newPriority: 'low' | 'normal' | 'high' | 'urgent') => void;
   isAssigned?: boolean;
   isDemoMode?: boolean;
 }
@@ -145,7 +147,7 @@ const ImageLightbox = ({ src, alt, onClose }: { src: string; alt: string; onClos
   </>
 );
 
-export const TodoCard = ({
+export const TodoCard = React.memo(({
   todo,
   onToggleComplete,
   currentUserId,
@@ -160,6 +162,8 @@ export const TodoCard = ({
   onUnreact,
   onTitleClick,
   onDelete,
+  onCommentClick,
+  onUpdatePriority,
   isAssigned = false,
 }: TodoCardProps) => {
   const isCompleted = todo.status === "completed";
@@ -198,7 +202,7 @@ export const TodoCard = ({
       exit={{ opacity: 0, scale: 0.96, y: -4 }}
       transition={{ type: "spring", stiffness: 400, damping: 32 }}
       className={cn(
-        "relative overflow-hidden rounded-xl bg-[var(--color-panel)]",
+        "relative rounded-xl bg-[var(--color-panel)]",
         isCompleted ? "opacity-50" : "opacity-100",
       )}
       style={{
@@ -209,7 +213,7 @@ export const TodoCard = ({
       {/* Priority accent bar */}
       {!isCompleted && priority !== 'normal' && (
         <div
-          className="absolute left-0 top-0 bottom-0 w-[3px]"
+          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl"
           style={{ background: priCfg.color }}
         />
       )}
@@ -288,11 +292,11 @@ export const TodoCard = ({
                     initial={{ opacity: 0, scale: 0.9, y: -4 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                    className="absolute right-0 top-9 z-40 w-48 rounded-xl overflow-hidden"
+                    className="absolute right-0 top-9 z-40 w-56 rounded-xl overflow-hidden"
                     style={{
                       background: "var(--color-panel)",
                       border: "1px solid var(--color-border)",
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+                      boxShadow: "0 12px 48px rgba(0,0,0,0.25)",
                     }}
                   >
                     <button
@@ -339,13 +343,21 @@ export const TodoCard = ({
         {/* Property chips row */}
         <div className="mt-2.5 ml-[34px] flex flex-wrap items-center gap-1.5">
           {/* Priority chip */}
-          <div
-            className="inline-flex items-center gap-1 rounded-md px-2 py-[2px] text-[11px] font-semibold leading-none min-h-[20px]"
+          <button
+            onClick={() => {
+              haptic('medium');
+              const priorities: ('low' | 'normal' | 'high' | 'urgent')[] = ['low', 'normal', 'high', 'urgent'];
+              const currentIndex = priorities.indexOf(priority);
+              const nextPriority = priorities[(currentIndex + 1) % priorities.length];
+              onUpdatePriority?.(todo.id, nextPriority);
+            }}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-[2px] text-[11px] font-semibold leading-none min-h-[20px] transition-all hover:brightness-110 active:scale-95 cursor-pointer"
             style={{ background: priCfg.bg, color: priCfg.color, border: `1px solid ${priCfg.color}25` }}
+            title="Priorität ändern"
           >
             <PriIcon size={11} className="shrink-0" />
             <span className="translate-y-[0.5px]">{priCfg.label}</span>
-          </div>
+          </button>
 
           {/* Labels */}
           {labels.map(l => (
@@ -382,7 +394,7 @@ export const TodoCard = ({
 
           {/* Comment count — clickable to open detail */}
           <button
-            onClick={() => { haptic(); onTitleClick?.(); }}
+            onClick={() => { haptic(); onCommentClick ? onCommentClick() : onTitleClick?.(); }}
             className="inline-flex items-center gap-1 rounded-md px-2 py-[3px] text-[11px] font-semibold leading-none transition-all active:scale-95 cursor-pointer"
             style={{ background: "var(--color-interactive-bg)", color: "var(--color-muted)", border: "1px solid var(--color-border)" }}
           >
@@ -544,4 +556,6 @@ export const TodoCard = ({
       </AnimatePresence>
     </motion.div>
   );
-};
+});
+
+TodoCard.displayName = "TodoCard";
