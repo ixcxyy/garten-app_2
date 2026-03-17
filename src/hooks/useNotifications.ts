@@ -67,6 +67,10 @@ export function useNotifications(
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
 
+    // Only send if the document is hidden (to avoid double notifications with Realtime)
+    // or if specifically triggered from a background process.
+    // However, since this hook is used for REALTIME events, we only show it if the user isn't looking at the relevant group.
+    
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({
         type: 'SHOW_NOTIFICATION',

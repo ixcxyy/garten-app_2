@@ -95,10 +95,15 @@ function GroupPageContent() {
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const [boardTransform, setBoardTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isZooming, setIsZooming] = useState(false);
+  const zoomTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('hide_completed');
     if (saved !== null) setHideCompleted(saved === 'true');
+    return () => {
+      if (zoomTimeoutRef.current) clearTimeout(zoomTimeoutRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -892,6 +897,7 @@ function GroupPageContent() {
               let lastDist = 0;
               el.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
+                  setIsZooming(true);
                   const dx = e.touches[0].clientX - e.touches[1].clientX;
                   const dy = e.touches[0].clientY - e.touches[1].clientY;
                   lastDist = Math.hypot(dx, dy);
@@ -924,7 +930,10 @@ function GroupPageContent() {
                   lastDist = dist;
                 }
               }, { passive: false });
-              el.addEventListener('touchend', () => { lastDist = 0; });
+              el.addEventListener('touchend', () => { 
+                lastDist = 0;
+                setIsZooming(false);
+              });
             }}
             onPointerDown={(e) => {
               if ((e.target as HTMLElement).closest('[data-card]')) return;
@@ -944,6 +953,10 @@ function GroupPageContent() {
             }}
             onWheel={(e) => {
               e.preventDefault();
+              setIsZooming(true);
+              if (zoomTimeoutRef.current) clearTimeout(zoomTimeoutRef.current);
+              zoomTimeoutRef.current = setTimeout(() => setIsZooming(false), 200);
+
               const delta = -e.deltaY * 0.002;
               const rect = e.currentTarget.getBoundingClientRect();
               const px = e.clientX - rect.left;
@@ -966,7 +979,7 @@ function GroupPageContent() {
                 y: boardTransform.y, 
                 scale: boardTransform.scale 
               }}
-              transition={isDragging ? { type: "tween", duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+              transition={(isDragging || isZooming) ? { type: "tween", duration: 0 } : { type: "spring", stiffness: 400, damping: 35, mass: 0.8 }}
               style={{
                 transformOrigin: '0 0',
                 willChange: 'transform',
