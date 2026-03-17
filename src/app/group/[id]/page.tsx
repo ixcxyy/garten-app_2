@@ -85,6 +85,8 @@ function GroupPageContent() {
   const [todoLabelMap, setTodoLabelMap] = useState<Record<string, Label[]>>({});
   const [checklistMap, setChecklistMap] = useState<Record<string, { done: number; total: number }>>({});
   const [detailTodo, setDetailTodo] = useState<Todo | null>(null);
+  const [filterLabel, setFilterLabel] = useState<string | null>(null);
+  const [commentCountMap, setCommentCountMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const saved = localStorage.getItem('hide_completed');
@@ -209,11 +211,12 @@ function GroupPageContent() {
         setReactionMap(rMap);
       }
 
-      // Fetch labels, todo_labels, and checklist progress
-      const [labelsRes, todoLabelsRes, checklistRes] = await Promise.all([
+      // Fetch labels, todo_labels, checklist progress, and comment counts
+      const [labelsRes, todoLabelsRes, checklistRes, commentsRes] = await Promise.all([
         supabase.from('labels').select('*').eq('group_id', id),
         todoIds.length > 0 ? supabase.from('todo_labels').select('todo_id, label_id').in('todo_id', todoIds) : Promise.resolve({ data: [] }),
         todoIds.length > 0 ? supabase.from('checklists').select('todo_id, is_completed').in('todo_id', todoIds) : Promise.resolve({ data: [] }),
+        todoIds.length > 0 ? supabase.from('todo_comments').select('todo_id').in('todo_id', todoIds) : Promise.resolve({ data: [] }),
       ]);
 
       const allLabels = labelsRes.data || [];
@@ -235,6 +238,12 @@ function GroupPageContent() {
       }
       setChecklistMap(clMap);
 
+      const ccMap: Record<string, number> = {};
+      for (const c of (commentsRes.data || [])) {
+        ccMap[c.todo_id] = (ccMap[c.todo_id] || 0) + 1;
+      }
+      setCommentCountMap(ccMap);
+
       // Fetch polls
       const { data: pollsData } = await supabase
         .from('polls').select('*').eq('group_id', id).order('created_at', { ascending: false });
@@ -247,6 +256,41 @@ function GroupPageContent() {
   }, [id, isDemoMode, router, currentUserId]);
 
   useEffect(() => { void fetchGroupData(); }, [fetchGroupData]);
+
+  // Realtime subscriptions for live updates
+  useEffect(() => {
+    if (isDemoMode || !id) return;
+
+    const channel = supabase
+      .channel(`group-realtime-${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'todos', filter: `group_id=eq.${id}` }, () => {
+        void fetchGroupData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, () => {
+        void fetchGroupData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_reactions' }, () => {
+        void fetchGroupData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklists' }, () => {
+        void fetchGroupData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'todo_comments' }, () => {
+        void fetchGroupData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'todo_labels' }, () => {
+        void fetchGroupData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'labels', filter: `group_id=eq.${id}` }, () => {
+        void fetchGroupData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'polls', filter: `group_id=eq.${id}` }, () => {
+        void fetchGroupData();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [id, isDemoMode, fetchGroupData]);
 
   const toggleTodoComplete = async (todoId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
@@ -341,7 +385,10 @@ function GroupPageContent() {
 
   const openTodos = todos.filter(t => t.status === 'pending');
   const doneTodos = todos.filter(t => t.status === 'completed');
-  const displayedTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? (hideCompleted ? [] : doneTodos) : [];
+  const unfilteredTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? (hideCompleted ? [] : doneTodos) : [];
+  const displayedTodos = filterLabel
+    ? unfilteredTodos.filter(t => (todoLabelMap[t.id] || []).some(l => l.id === filterLabel))
+    : unfilteredTodos;
   const dueTodos = todos.filter(t => t.due_date !== null);
   const doneDueTodos = dueTodos.filter(t => t.status === 'completed');
   const completionPct = dueTodos.length > 0 ? Math.round((doneDueTodos.length / dueTodos.length) * 100) : 0;
@@ -511,7 +558,38 @@ function GroupPageContent() {
       </header>
 
       {/* Content */}
-      <main className="px-4 pt-4 overflow-x-hidden">
+      <main className="px-4 pt-3 overflow-x-hidden">
+        {/* Label filter bar */}
+        {(activeTab === 'open' || activeTab === 'done') && groupLabels.length > 0 && (
+          <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => setFilterLabel(null)}
+              className="shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold transition-all"
+              style={{
+                background: !filterLabel ? "var(--color-foreground)" : "var(--color-interactive-bg)",
+                color: !filterLabel ? "var(--color-panel)" : "var(--color-muted)",
+                border: "1px solid var(--color-border)",
+              }}
+            >
+              Alle
+            </button>
+            {groupLabels.map(label => (
+              <button
+                key={label.id}
+                onClick={() => setFilterLabel(filterLabel === label.id ? null : label.id)}
+                className="shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold text-white transition-all active:scale-95"
+                style={{
+                  background: filterLabel === label.id ? label.color : label.color + '40',
+                  color: filterLabel === label.id ? 'white' : label.color,
+                  border: `1px solid ${label.color}${filterLabel === label.id ? '' : '60'}`,
+                }}
+              >
+                {label.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Hide completed toggle for done tab */}
         {activeTab === 'done' && doneTodos.length > 0 && (
           <div className="flex items-center justify-end mb-3">
@@ -701,6 +779,7 @@ function GroupPageContent() {
                     reactions={reactionMap[todo.id] || []}
                     labels={todoLabelMap[todo.id] || []}
                     checklistProgress={checklistMap[todo.id]}
+                    commentCount={commentCountMap[todo.id] || 0}
                     isAssigned={myAssignments.has(todo.id)}
                     onAssign={() => handleAssign(todo.id)}
                     onUnassign={() => handleUnassign(todo.id)}

@@ -3,17 +3,17 @@
 import Image from "next/image";
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Camera, Calendar, Hand, SmilePlus, ArrowUp, ArrowDown, Minus, AlertTriangle } from "lucide-react";
+import { Check, Camera, Calendar, Hand, SmilePlus, ArrowUp, ArrowDown, Minus, AlertTriangle, CheckSquare, MessageCircle } from "lucide-react";
 import { Todo, TaskReaction, UserProfile, Label } from "@/lib/types";
 import { cn } from "@/utils/cn";
 
 const EMOJI_OPTIONS = ["👍", "❤️", "🌱", "💪", "🎉", "👏"];
 
-const PRIORITY_ICON = {
-  low: { icon: ArrowDown, color: '#6B7280' },
-  normal: { icon: Minus, color: '#3B82F6' },
-  high: { icon: ArrowUp, color: '#F59E0B' },
-  urgent: { icon: AlertTriangle, color: '#EF4444' },
+const PRIORITY_CONFIG = {
+  low: { icon: ArrowDown, color: '#6B7280', bg: '#6B728012', label: 'Niedrig' },
+  normal: { icon: Minus, color: '#3B82F6', bg: '#3B82F612', label: 'Normal' },
+  high: { icon: ArrowUp, color: '#F59E0B', bg: '#F59E0B18', label: 'Hoch' },
+  urgent: { icon: AlertTriangle, color: '#EF4444', bg: '#EF444418', label: 'Dringend' },
 } as const;
 
 interface TodoCardProps {
@@ -24,6 +24,7 @@ interface TodoCardProps {
   reactions?: TaskReaction[];
   labels?: Label[];
   checklistProgress?: { done: number; total: number };
+  commentCount?: number;
   onAssign?: () => void;
   onUnassign?: () => void;
   onReact?: (emoji: string) => void;
@@ -103,6 +104,7 @@ export const TodoCard = ({
   reactions = [],
   labels = [],
   checklistProgress,
+  commentCount = 0,
   onAssign,
   onUnassign,
   onReact,
@@ -114,6 +116,9 @@ export const TodoCard = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAssignees, setShowAssignees] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const priority = todo.priority || 'normal';
+  const priCfg = PRIORITY_CONFIG[priority];
+  const PriIcon = priCfg.icon;
 
   const reactionGroups = reactions.reduce<Record<string, { count: number; hasOwn: boolean }>>((acc, r) => {
     if (!acc[r.emoji]) acc[r.emoji] = { count: 0, hasOwn: false };
@@ -130,274 +135,268 @@ export const TodoCard = ({
       exit={{ opacity: 0, scale: 0.96, y: -4 }}
       transition={{ type: "spring", stiffness: 400, damping: 32 }}
       className={cn(
-        "relative overflow-hidden rounded-[22px] bg-[var(--color-panel)]",
-        isCompleted ? "opacity-60" : "opacity-100",
+        "relative overflow-hidden rounded-xl bg-[var(--color-panel)]",
+        isCompleted ? "opacity-50" : "opacity-100",
       )}
       style={{
         border: "1px solid var(--color-border)",
-        boxShadow: isCompleted
-          ? "none"
-          : "0 2px 12px -2px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.03)",
+        boxShadow: isCompleted ? "none" : "0 1px 3px rgba(0,0,0,0.04)",
       }}
     >
-      {!isCompleted && (
+      {/* Priority accent bar */}
+      {!isCompleted && priority !== 'normal' && (
         <div
-          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-sm"
-          style={{ background: "var(--color-brand)", opacity: 0.5 }}
+          className="absolute left-0 top-0 bottom-0 w-[3px]"
+          style={{ background: priCfg.color }}
         />
       )}
 
-      <div className="flex items-start gap-3 px-4 py-3.5 pl-5">
-        {/* Checkbox */}
-        <button
-          onClick={() => onToggleComplete(todo.id, todo.status)}
-          className="mt-0.5 shrink-0 flex h-[24px] w-[24px] items-center justify-center rounded-full transition-all duration-200 active:scale-90"
-          style={{
-            border: isCompleted
-              ? "2px solid var(--color-brand)"
-              : "2px solid var(--color-border-strong)",
-            background: isCompleted ? "var(--color-brand)" : "transparent",
-          }}
-        >
-          <AnimatePresence>
-            {isCompleted && (
-              <motion.span
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 500, damping: 25 }}
-              >
-                <Check size={12} strokeWidth={3} color="white" />
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </button>
+      <div className="px-3.5 py-3">
+        {/* Top row: checkbox + title */}
+        <div className="flex items-start gap-2.5">
+          <button
+            onClick={() => onToggleComplete(todo.id, todo.status)}
+            className="mt-[3px] shrink-0 flex h-[18px] w-[18px] items-center justify-center rounded-[5px] transition-all duration-200 active:scale-90"
+            style={{
+              border: isCompleted
+                ? "1.5px solid var(--color-brand)"
+                : "1.5px solid var(--color-border-strong)",
+              background: isCompleted ? "var(--color-brand)" : "transparent",
+            }}
+          >
+            <AnimatePresence>
+              {isCompleted && (
+                <motion.span
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                >
+                  <Check size={10} strokeWidth={3} color="white" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
 
-        {/* Content */}
-        <div className="min-w-0 flex-1 overflow-hidden">
-          {/* Labels row */}
-          {labels.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-1">
-              {labels.map(l => (
-                <span key={l.id} className="inline-block rounded-full px-2 py-0.5 text-[9px] font-bold text-white" style={{ background: l.color }}>
-                  {l.name}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center gap-1.5">
-            {/* Priority indicator */}
-            {todo.priority && todo.priority !== 'normal' && (() => {
-              const cfg = PRIORITY_ICON[todo.priority];
-              const Icon = cfg.icon;
-              return <Icon size={13} style={{ color: cfg.color }} className="shrink-0" />;
-            })()}
+          <div className="min-w-0 flex-1">
             <p
               onClick={onTitleClick}
               className={cn(
-                "text-[15px] font-semibold leading-snug tracking-tight",
+                "text-[14px] font-medium leading-snug",
                 isCompleted
                   ? "line-through text-[var(--color-subtle)]"
                   : "text-[var(--color-foreground)]",
-                onTitleClick && !isCompleted && "cursor-pointer active:opacity-70",
+                onTitleClick && !isCompleted && "cursor-pointer hover:underline decoration-[var(--color-border-strong)] underline-offset-2",
               )}
             >
               {todo.title}
             </p>
+
+            {todo.description && (
+              <p
+                className="mt-0.5 text-[12px] leading-relaxed line-clamp-2"
+                style={{ color: "var(--color-muted)" }}
+              >
+                {todo.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Property chips row — Notion style */}
+        <div className="mt-2 ml-[30px] flex flex-wrap items-center gap-1.5">
+          {/* Priority chip */}
+          <div
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+            style={{ background: priCfg.bg, color: priCfg.color, border: `1px solid ${priCfg.color}25` }}
+          >
+            <PriIcon size={10} />
+            {priCfg.label}
           </div>
 
-          {todo.description && (
-            <p
-              className="mt-0.5 text-[13px] leading-relaxed line-clamp-2"
-              style={{ color: "var(--color-muted)" }}
+          {/* Labels */}
+          {labels.map(l => (
+            <span key={l.id} className="inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white" style={{ background: l.color }}>
+              {l.name}
+            </span>
+          ))}
+
+          {/* Due date */}
+          {todo.due_date && (
+            <div
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{ background: "var(--color-brand-soft)", color: "var(--color-brand)" }}
             >
-              {todo.description}
-            </p>
+              <Calendar size={9} />
+              {new Date(todo.due_date).toLocaleDateString("de-DE", { day: "numeric", month: "short" })}
+            </div>
           )}
 
           {/* Checklist progress */}
           {checklistProgress && checklistProgress.total > 0 && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--color-border-strong)" }}>
-                <div className="h-full rounded-full" style={{ background: "var(--color-brand)", width: `${(checklistProgress.done / checklistProgress.total) * 100}%`, transition: "width 0.3s" }} />
-              </div>
-              <span className="text-[10px] font-bold" style={{ color: "var(--color-muted)" }}>
-                {checklistProgress.done}/{checklistProgress.total}
-              </span>
-            </div>
-          )}
-
-          {/* Meta row: due date + assignees */}
-          {(todo.due_date || assignees.length > 0) && (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {todo.due_date && (
-                <div
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5"
-                  style={{
-                    background: "var(--color-brand-soft)",
-                    color: "var(--color-brand)",
-                  }}
-                >
-                  <Calendar size={10} strokeWidth={2} />
-                  <span className="text-[10px] font-semibold">
-                    {new Date(todo.due_date).toLocaleDateString("de-DE", { day: "numeric", month: "short" })}
-                  </span>
-                </div>
-              )}
-
-              {assignees.length > 0 && (
-                <button onClick={() => setShowAssignees(true)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-interactive-bg)] pl-1 pr-2 py-0.5 cursor-pointer transition-all active:scale-95">
-                  <div className="flex -space-x-1">
-                    {assignees.slice(0, 3).map((a) => {
-                      const name = a.user_profile?.first_name || a.user_profile?.username || "?";
-                      return (
-                        <div
-                          key={a.user_id}
-                          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[7px] font-bold border border-[var(--color-panel)]"
-                          style={{ background: "var(--color-brand)", color: "white" }}
-                          title={name}
-                        >
-                          {a.user_profile?.avatar_url ? (
-                            <img src={a.user_profile.avatar_url} className="h-full w-full rounded-full object-cover" alt="" />
-                          ) : (
-                            name.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <span className="text-[9px] font-bold text-[var(--color-subtle)]">
-                    {assignees.length}
-                  </span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {todo.photo_url && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="mt-2.5 overflow-hidden rounded-xl"
-              style={{ border: "1px solid var(--color-border)" }}
+            <div
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{
+                background: checklistProgress.done === checklistProgress.total ? "var(--color-brand-soft)" : "var(--color-interactive-bg)",
+                color: checklistProgress.done === checklistProgress.total ? "var(--color-brand)" : "var(--color-muted)",
+                border: "1px solid var(--color-border)",
+              }}
             >
-              <div className="relative">
-                <Image
-                  src={todo.photo_url}
-                  alt={todo.title}
-                  width={400}
-                  height={300}
-                  className={cn(
-                    "w-full max-h-48 object-contain transition-all duration-300",
-                    isCompleted && "grayscale opacity-50",
-                  )}
-                  style={{ background: "var(--color-interactive-bg)" }}
-                />
-                <div
-                  className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full px-2 py-0.5"
-                  style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)" }}
-                >
-                  <Camera size={9} color="white" strokeWidth={2} />
-                  <span className="text-[8px] font-bold text-white uppercase tracking-wider">Foto</span>
-                </div>
-              </div>
-            </motion.div>
+              <CheckSquare size={9} />
+              {checklistProgress.done}/{checklistProgress.total}
+            </div>
           )}
 
-          {/* Action row: sign-up + reactions */}
-          {currentUserId && !isCompleted && (
-            <div className="mt-2.5 flex items-center gap-1.5 flex-wrap overflow-hidden">
-              {/* Sign up / unassign button */}
-              <button
-                onClick={isAssigned ? onUnassign : onAssign}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all active:scale-95",
-                  isAssigned
-                    ? "bg-[var(--color-brand)] text-white"
-                    : "bg-[var(--color-interactive-bg)] text-[var(--color-muted)] border border-[var(--color-border)]"
-                )}
-              >
-                <Hand size={11} />
-                {isAssigned ? "Dabei" : "Mitmachen"}
-              </button>
-
-              {/* Emoji reactions */}
-              {Object.entries(reactionGroups).map(([emoji, { count, hasOwn }]) => (
-                <button
-                  key={emoji}
-                  onClick={() => hasOwn ? onUnreact?.(emoji) : onReact?.(emoji)}
-                  className="inline-flex items-center gap-0.5 rounded-full px-2 py-1 text-[11px] transition-all active:scale-95"
-                  style={{
-                    background: hasOwn ? "var(--color-brand-soft)" : "var(--color-interactive-bg)",
-                    border: hasOwn ? "1px solid var(--color-brand)" : "1px solid var(--color-border)",
-                  }}
-                >
-                  <span className="text-[13px]">{emoji}</span>
-                  <span className="text-[9px] font-bold" style={{ color: "var(--color-foreground)" }}>{count}</span>
-                </button>
-              ))}
-
-              {/* Add reaction button */}
-              <div className="relative" ref={pickerRef}>
-                <button
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="inline-flex items-center justify-center h-6 w-6 rounded-full transition-all active:scale-95"
-                  style={{
-                    background: "var(--color-interactive-bg)",
-                    border: "1px solid var(--color-border)",
-                    color: "var(--color-muted)",
-                  }}
-                >
-                  <SmilePlus size={11} />
-                </button>
-                <AnimatePresence>
-                  {showEmojiPicker && (
-                    <>
-                      <motion.div
-                        className="fixed inset-0 z-30"
-                        onClick={() => setShowEmojiPicker(false)}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                      />
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.85 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.85 }}
-                        className="fixed left-1/2 bottom-24 -translate-x-1/2 z-40 flex gap-1.5 rounded-2xl p-2.5"
-                        style={{
-                          background: "var(--color-panel)",
-                          border: "1px solid var(--color-border)",
-                          boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
-                        }}
-                      >
-                        {EMOJI_OPTIONS.map((emoji) => (
-                          <button
-                            key={emoji}
-                            onClick={() => {
-                              const hasOwn = reactionGroups[emoji]?.hasOwn;
-                              if (hasOwn) onUnreact?.(emoji);
-                              else onReact?.(emoji);
-                              setShowEmojiPicker(false);
-                            }}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl text-[20px] transition-all hover:scale-110 active:scale-95"
-                            style={{
-                              background: reactionGroups[emoji]?.hasOwn ? "var(--color-brand-soft)" : "transparent",
-                            }}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
+          {/* Comment count */}
+          {commentCount > 0 && (
+            <div
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{ background: "var(--color-interactive-bg)", color: "var(--color-muted)", border: "1px solid var(--color-border)" }}
+            >
+              <MessageCircle size={9} />
+              {commentCount}
             </div>
+          )}
+
+          {/* Assignees */}
+          {assignees.length > 0 && (
+            <button onClick={() => setShowAssignees(true)} className="inline-flex items-center gap-1 rounded-md pl-0.5 pr-1.5 py-0.5 cursor-pointer transition-all active:scale-95"
+              style={{ background: "var(--color-interactive-bg)", border: "1px solid var(--color-border)" }}
+            >
+              <div className="flex -space-x-1">
+                {assignees.slice(0, 3).map((a) => {
+                  const name = a.user_profile?.first_name || a.user_profile?.username || "?";
+                  return (
+                    <div
+                      key={a.user_id}
+                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[7px] font-bold border border-[var(--color-panel)]"
+                      style={{ background: "var(--color-brand)", color: "white" }}
+                      title={name}
+                    >
+                      {a.user_profile?.avatar_url ? (
+                        <img src={a.user_profile.avatar_url} className="h-full w-full rounded-full object-cover" alt="" />
+                      ) : (
+                        name.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <span className="text-[9px] font-bold" style={{ color: "var(--color-subtle)" }}>
+                {assignees.length}
+              </span>
+            </button>
           )}
         </div>
+
+        {/* Photo */}
+        {todo.photo_url && (
+          <div className="mt-2 ml-[30px] overflow-hidden rounded-lg" style={{ border: "1px solid var(--color-border)" }}>
+            <Image
+              src={todo.photo_url}
+              alt={todo.title}
+              width={400}
+              height={300}
+              className={cn(
+                "w-full max-h-40 object-contain",
+                isCompleted && "grayscale opacity-50",
+              )}
+              style={{ background: "var(--color-interactive-bg)" }}
+            />
+          </div>
+        )}
+
+        {/* Action row: sign-up + reactions */}
+        {currentUserId && !isCompleted && (
+          <div className="mt-2 ml-[30px] flex items-center gap-1.5 flex-wrap">
+            <button
+              onClick={isAssigned ? onUnassign : onAssign}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold transition-all active:scale-95",
+                isAssigned
+                  ? "bg-[var(--color-brand)] text-white"
+                  : "text-[var(--color-muted)]"
+              )}
+              style={isAssigned ? {} : { background: "var(--color-interactive-bg)", border: "1px solid var(--color-border)" }}
+            >
+              <Hand size={10} />
+              {isAssigned ? "Dabei" : "Mitmachen"}
+            </button>
+
+            {Object.entries(reactionGroups).map(([emoji, { count, hasOwn }]) => (
+              <button
+                key={emoji}
+                onClick={() => hasOwn ? onUnreact?.(emoji) : onReact?.(emoji)}
+                className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-[10px] transition-all active:scale-95"
+                style={{
+                  background: hasOwn ? "var(--color-brand-soft)" : "var(--color-interactive-bg)",
+                  border: hasOwn ? "1px solid var(--color-brand)" : "1px solid var(--color-border)",
+                }}
+              >
+                <span className="text-[12px]">{emoji}</span>
+                <span className="text-[9px] font-bold" style={{ color: "var(--color-foreground)" }}>{count}</span>
+              </button>
+            ))}
+
+            <div className="relative" ref={pickerRef}>
+              <button
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="inline-flex items-center justify-center h-6 w-6 rounded-md transition-all active:scale-95"
+                style={{
+                  background: "var(--color-interactive-bg)",
+                  border: "1px solid var(--color-border)",
+                  color: "var(--color-muted)",
+                }}
+              >
+                <SmilePlus size={10} />
+              </button>
+              <AnimatePresence>
+                {showEmojiPicker && (
+                  <>
+                    <motion.div
+                      className="fixed inset-0 z-30"
+                      onClick={() => setShowEmojiPicker(false)}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      className="fixed left-1/2 bottom-24 -translate-x-1/2 z-40 flex gap-1.5 rounded-2xl p-2.5"
+                      style={{
+                        background: "var(--color-panel)",
+                        border: "1px solid var(--color-border)",
+                        boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+                      }}
+                    >
+                      {EMOJI_OPTIONS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => {
+                            const hasOwn = reactionGroups[emoji]?.hasOwn;
+                            if (hasOwn) onUnreact?.(emoji);
+                            else onReact?.(emoji);
+                            setShowEmojiPicker(false);
+                          }}
+                          className="flex h-10 w-10 items-center justify-center rounded-xl text-[20px] transition-all hover:scale-110 active:scale-95"
+                          style={{
+                            background: reactionGroups[emoji]?.hasOwn ? "var(--color-brand-soft)" : "transparent",
+                          }}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
       </div>
+
       <AnimatePresence>
         {showAssignees && assignees.length > 0 && (
           <AssigneeModal assignees={assignees} onClose={() => setShowAssignees(false)} />

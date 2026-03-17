@@ -86,32 +86,19 @@ async function createVapidJwt(audience: string, vapidPrivateKeyRaw: Uint8Array, 
 // ========== RFC 8291 Web Push Encryption ==========
 
 async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, length: number): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey("raw", ikm, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const prk = new Uint8Array(await crypto.subtle.sign("HMAC", key, salt.length > 0 ? salt : new Uint8Array(32)));
+  // HKDF-Extract: PRK = HMAC-SHA256(salt, IKM)  — salt is the HMAC key
+  const saltKey = await crypto.subtle.importKey(
+    "raw", salt.length > 0 ? salt : new Uint8Array(32),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const prk = new Uint8Array(await crypto.subtle.sign("HMAC", saltKey, ikm));
 
-  // Actually HKDF: extract then expand
-  const prkKey = await crypto.subtle.importKey("raw", salt, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const extract = new Uint8Array(await crypto.subtle.sign("HMAC", prkKey, ikm));
-
-  const expandKey = await crypto.subtle.importKey("raw", extract, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const infoWithCounter = concat(info, new Uint8Array([1]));
-  const okm = new Uint8Array(await crypto.subtle.sign("HMAC", expandKey, infoWithCounter));
+  // HKDF-Expand: OKM = HMAC-SHA256(PRK, info || 0x01)
+  const prkKey = await crypto.subtle.importKey(
+    "raw", prk, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const okm = new Uint8Array(await crypto.subtle.sign("HMAC", prkKey, concat(info, new Uint8Array([1]))));
   return okm.slice(0, length);
-}
-
-function createInfo(type: string, clientPublicKey: Uint8Array, serverPublicKey: Uint8Array): Uint8Array {
-  const encoder = new TextEncoder();
-  const typeBytes = encoder.encode(type);
-  // "Content-Encoding: <type>\0" + "P-256\0" + len(clientPub) + clientPub + len(serverPub) + serverPub
-  const header = encoder.encode("Content-Encoding: ");
-  const nul = new Uint8Array([0]);
-  const p256 = encoder.encode("P-256");
-  const clientLen = new Uint8Array(2);
-  new DataView(clientLen.buffer).setUint16(0, clientPublicKey.length);
-  const serverLen = new Uint8Array(2);
-  new DataView(serverLen.buffer).setUint16(0, serverPublicKey.length);
-
-  return concat(header, typeBytes, nul, p256, nul, clientLen, clientPublicKey, serverLen, serverPublicKey);
 }
 
 async function encryptPayload(

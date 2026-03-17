@@ -85,45 +85,45 @@ export function useNotifications(
   const subscribeToPush = useCallback(async () => {
     try {
       if (!currentUserId || typeof window === 'undefined') return;
-      
+
       if (!VAPID_PUBLIC_KEY) {
         console.warn('Push subscription blocked: NEXT_PUBLIC_VAPID_PUBLIC_KEY is missing.');
         return;
       }
-      
+
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         console.warn('Push notifications are not supported in this browser.');
         return;
       }
 
       const sw = await navigator.serviceWorker.ready;
-      
-      // Check for existing subscription first
-      const existingSub = await sw.pushManager.getSubscription();
-      if (existingSub) {
-        return;
-      }
 
-      const sub = await sw.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+      // Get or create push subscription
+      let sub = await sw.pushManager.getSubscription();
+      if (!sub) {
+        sub = await sw.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
 
       const { endpoint, keys } = sub.toJSON();
       if (!endpoint || !keys) return;
 
+      // Upsert: always ensure it's saved in DB (may have been lost)
       const { error } = await supabase
         .from('push_subscriptions')
-        .insert([{
+        .upsert({
           user_id: currentUserId,
           endpoint,
           p256dh: keys.p256dh,
           auth: keys.auth,
-        }]);
+        }, { onConflict: 'user_id,endpoint' });
 
       if (error) {
-        // Handle duplicate subscription (user already subscribed)
-        if (error.code !== '23505') throw error;
+        console.warn('Push subscription DB save failed:', error);
+      } else {
+        console.log('Push subscription saved successfully');
       }
     } catch (error) {
       console.warn('Push subscription failed:', error);
@@ -135,6 +135,11 @@ export function useNotifications(
     if (typeof window === 'undefined' || !currentUserId || !options.autoSubscribe) return;
 
     let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    // Always try to subscribe to push when permission is granted
+    if (Notification.permission === 'granted') {
+      void subscribeToPush();
+    }
 
     const subscribe = async () => {
       const hasPermission = Notification.permission === 'granted';
@@ -217,10 +222,6 @@ export function useNotifications(
     };
 
     void subscribe();
-
-    if (Notification.permission === 'granted') {
-      void subscribeToPush();
-    }
 
     return () => {
       if (channel) supabase.removeChannel(channel);
