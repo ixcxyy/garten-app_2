@@ -399,6 +399,20 @@ function GroupPageContent() {
     await supabase.from('task_reactions').delete().eq('todo_id', todoId).eq('user_id', currentUserId).eq('emoji', emoji);
   };
 
+  const openTodos = todos.filter(t => t.status === 'pending');
+  const doneTodos = todos.filter(t => t.status === 'completed');
+
+  const displayedTodos = React.useMemo(() => {
+    const unfilteredTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? (hideCompleted ? [] : doneTodos) : [];
+    return filterLabel
+      ? unfilteredTodos.filter(t => (todoLabelMap[t.id] || []).some(l => l.id === filterLabel))
+      : unfilteredTodos;
+  }, [activeTab, openTodos, doneTodos, hideCompleted, filterLabel, todoLabelMap]);
+
+  const dueTodos = todos.filter(t => t.due_date !== null);
+  const doneDueTodos = dueTodos.filter(t => t.status === 'completed');
+  const completionPct = dueTodos.length > 0 ? Math.round((doneDueTodos.length / dueTodos.length) * 100) : 0;
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--color-canvas)" }}>
@@ -426,20 +440,6 @@ function GroupPageContent() {
       </div>
     );
   }
-
-  const openTodos = todos.filter(t => t.status === 'pending');
-  const doneTodos = todos.filter(t => t.status === 'completed');
-
-  const displayedTodos = React.useMemo(() => {
-    const unfilteredTodos = activeTab === 'open' ? openTodos : activeTab === 'done' ? (hideCompleted ? [] : doneTodos) : [];
-    return filterLabel
-      ? unfilteredTodos.filter(t => (todoLabelMap[t.id] || []).some(l => l.id === filterLabel))
-      : unfilteredTodos;
-  }, [activeTab, openTodos, doneTodos, hideCompleted, filterLabel, todoLabelMap]);
-
-  const dueTodos = todos.filter(t => t.due_date !== null);
-  const doneDueTodos = dueTodos.filter(t => t.status === 'completed');
-  const completionPct = dueTodos.length > 0 ? Math.round((doneDueTodos.length / dueTodos.length) * 100) : 0;
 
   return (
     <div className={`min-h-screen overflow-x-hidden ${viewMode === 'board' ? 'pb-0' : 'pb-32'}`} style={{ background: "var(--color-canvas)" }}>
