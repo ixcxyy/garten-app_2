@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3, Users, EyeOff, Eye, LayoutGrid, List, ZoomIn, ZoomOut } from 'lucide-react';
+import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3, Users, EyeOff, Eye, LayoutGrid, List } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Todo, Group, Poll, TaskReaction, UserProfile, GroupMember, Label } from '@/lib/types';
 import { TodoCard } from '@/components/TodoCard';
@@ -118,10 +118,10 @@ function GroupPageContent() {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const fetchGroupData = useCallback(async () => {
+  const fetchGroupData = useCallback(async (silent = false) => {
     if (!id) return;
-    // Only show full loading state on first load
-    if (!group) setLoading(true);
+    // Only show loading on very first load, never on refetch
+    if (!group && !silent) setLoading(true);
     try {
       if (!isDemoMode) {
         const { data: { user } } = await supabase.auth.getUser();
@@ -162,6 +162,8 @@ function GroupPageContent() {
 
       const todosData = todosRes.data || [];
       setTodos(todosData);
+      // Keep detailTodo in sync with fresh data (don't close modal)
+      setDetailTodo(prev => prev ? todosData.find(t => t.id === prev.id) || null : null);
 
       // Fetch member profiles
       const memberRows = membersRes.data || [];
@@ -269,28 +271,28 @@ function GroupPageContent() {
     const channel = supabase
       .channel(`group-realtime-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'todos', filter: `group_id=eq.${id}` }, () => {
-        void fetchGroupData();
+        void fetchGroupData(true);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, () => {
-        void fetchGroupData();
+        void fetchGroupData(true);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_reactions' }, () => {
-        void fetchGroupData();
+        void fetchGroupData(true);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'checklists' }, () => {
-        void fetchGroupData();
+        void fetchGroupData(true);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'todo_comments' }, () => {
-        void fetchGroupData();
+        void fetchGroupData(true);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'todo_labels' }, () => {
-        void fetchGroupData();
+        void fetchGroupData(true);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'labels', filter: `group_id=eq.${id}` }, () => {
-        void fetchGroupData();
+        void fetchGroupData(true);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'polls', filter: `group_id=eq.${id}` }, () => {
-        void fetchGroupData();
+        void fetchGroupData(true);
       })
       .subscribe();
 
@@ -768,35 +770,39 @@ function GroupPageContent() {
               className="relative"
               style={{ height: 'calc(100vh - 260px)' }}
             >
-              {/* Zoom controls */}
-              <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
-                <button
-                  onClick={() => setBoardTransform(prev => ({ ...prev, scale: Math.min(prev.scale + 0.2, 2.5) }))}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg"
-                  style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", color: "var(--color-muted)" }}
-                >
-                  <ZoomIn size={14} />
-                </button>
-                <button
-                  onClick={() => setBoardTransform(prev => ({ ...prev, scale: Math.max(prev.scale - 0.2, 0.3) }))}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg"
-                  style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", color: "var(--color-muted)" }}
-                >
-                  <ZoomOut size={14} />
-                </button>
-                <button
-                  onClick={() => setBoardTransform({ x: 0, y: 0, scale: 1 })}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[9px] font-bold"
-                  style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", color: "var(--color-muted)" }}
-                >
-                  1:1
-                </button>
-              </div>
-
-              {/* Canvas area */}
+              {/* Canvas — drag to pan, pinch to zoom, scroll to zoom */}
               <div
-                className="w-full h-full overflow-hidden rounded-xl touch-none"
-                style={{ background: "var(--color-canvas-alt, var(--color-interactive-bg))", border: "1px solid var(--color-border)" }}
+                className="w-full h-full overflow-hidden rounded-xl"
+                style={{ background: "var(--color-canvas-alt, var(--color-interactive-bg))", border: "1px solid var(--color-border)", touchAction: 'none' }}
+                ref={(el) => {
+                  if (!el || (el as any).__pinchBound) return;
+                  (el as any).__pinchBound = true;
+                  let lastDist = 0;
+                  el.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 2) {
+                      const dx = e.touches[0].clientX - e.touches[1].clientX;
+                      const dy = e.touches[0].clientY - e.touches[1].clientY;
+                      lastDist = Math.hypot(dx, dy);
+                    }
+                  }, { passive: false });
+                  el.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 2) {
+                      e.preventDefault();
+                      const dx = e.touches[0].clientX - e.touches[1].clientX;
+                      const dy = e.touches[0].clientY - e.touches[1].clientY;
+                      const dist = Math.hypot(dx, dy);
+                      if (lastDist > 0) {
+                        const delta = (dist - lastDist) * 0.005;
+                        setBoardTransform(prev => ({
+                          ...prev,
+                          scale: Math.min(3, Math.max(0.3, prev.scale + delta)),
+                        }));
+                      }
+                      lastDist = dist;
+                    }
+                  }, { passive: false });
+                  el.addEventListener('touchend', () => { lastDist = 0; });
+                }}
                 onPointerDown={(e) => {
                   if ((e.target as HTMLElement).closest('[data-card]')) return;
                   const startX = e.clientX - boardTransform.x;
@@ -812,11 +818,10 @@ function GroupPageContent() {
                   window.addEventListener('pointerup', onUp);
                 }}
                 onWheel={(e) => {
-                  e.preventDefault();
-                  const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                  const delta = e.deltaY > 0 ? -0.08 : 0.08;
                   setBoardTransform(prev => ({
                     ...prev,
-                    scale: Math.min(2.5, Math.max(0.3, prev.scale + delta)),
+                    scale: Math.min(3, Math.max(0.3, prev.scale + delta)),
                   }));
                 }}
               >
@@ -824,9 +829,9 @@ function GroupPageContent() {
                   style={{
                     transform: `translate(${boardTransform.x}px, ${boardTransform.y}px) scale(${boardTransform.scale})`,
                     transformOrigin: '0 0',
-                    transition: 'none',
+                    willChange: 'transform',
                   }}
-                  className="p-6"
+                  className="p-4"
                 >
                   <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
                     {displayedTodos.map(todo => (
@@ -846,6 +851,7 @@ function GroupPageContent() {
                           onReact={(emoji) => handleReact(todo.id, emoji)}
                           onUnreact={(emoji) => handleUnreact(todo.id, emoji)}
                           onTitleClick={() => setDetailTodo(todo)}
+                          onDelete={() => handleDeleteTodo(todo.id)}
                           isDemoMode={isDemoMode}
                         />
                       </div>
@@ -858,6 +864,17 @@ function GroupPageContent() {
                   )}
                 </div>
               </div>
+
+              {/* Minimal zoom indicator — only visible when zoomed */}
+              {boardTransform.scale !== 1 && (
+                <button
+                  onClick={() => setBoardTransform({ x: 0, y: 0, scale: 1 })}
+                  className="absolute bottom-3 right-3 rounded-full px-2.5 py-1 text-[10px] font-bold"
+                  style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", color: "var(--color-muted)", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+                >
+                  {Math.round(boardTransform.scale * 100)}%
+                </button>
+              )}
             </motion.div>
           ) : displayedTodos.length === 0 ? (
             <motion.div
@@ -1018,7 +1035,7 @@ function GroupPageContent() {
             labels={groupLabels}
             todoLabels={(todoLabelMap[detailTodo.id] || []).map(l => l.id)}
             onClose={() => setDetailTodo(null)}
-            onUpdated={() => { setDetailTodo(null); fetchGroupData(); }}
+            onUpdated={() => fetchGroupData(true)}
             isDemoMode={isDemoMode}
           />
         )}

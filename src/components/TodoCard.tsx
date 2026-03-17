@@ -380,16 +380,15 @@ export const TodoCard = ({
             </div>
           )}
 
-          {/* Comment count */}
-          {commentCount > 0 && (
-            <div
-              className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold"
-              style={{ background: "var(--color-interactive-bg)", color: "var(--color-muted)", border: "1px solid var(--color-border)" }}
-            >
-              <MessageCircle size={11} />
-              {commentCount}
-            </div>
-          )}
+          {/* Comment count — clickable to open detail */}
+          <button
+            onClick={() => { haptic(); onTitleClick?.(); }}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
+            style={{ background: "var(--color-interactive-bg)", color: "var(--color-muted)", border: "1px solid var(--color-border)" }}
+          >
+            <MessageCircle size={11} />
+            {commentCount > 0 ? commentCount : '+'}
+          </button>
 
           {/* Assignees */}
           {assignees.length > 0 && (

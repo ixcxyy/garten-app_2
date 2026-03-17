@@ -482,11 +482,11 @@ export const TaskDetailModal: React.FC<Props> = ({
                       {isOwn && (
                         <button
                           onClick={() => handleDeleteComment(c.id)}
-                          className="opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity p-0.5 rounded"
+                          className="p-1 rounded-md transition-all active:scale-90 active:bg-red-50"
                           style={{ color: "#EF4444" }}
                           title="Löschen"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>
