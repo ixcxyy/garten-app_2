@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Check, Plus, Trash2, Send, Tag, CheckSquare, MessageCircle,
-  AlertTriangle, ArrowUp, ArrowDown, Minus, Loader2,
+  AlertTriangle, ArrowUp, ArrowDown, Minus, Loader2, Calendar, Clock,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Todo, Label, ChecklistItem, TodoComment, UserProfile } from '@/lib/types';
@@ -18,12 +19,18 @@ const PRIORITY_CONFIG = {
 
 const LABEL_COLORS = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#6B7280', '#14B8A6'];
 
+function haptic(style: 'light' | 'medium' | 'heavy' = 'light') {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    navigator.vibrate(style === 'light' ? 10 : style === 'medium' ? 20 : 40);
+  }
+}
+
 interface Props {
   todo: Todo;
   groupId: string;
   currentUserId?: string;
   labels?: Label[];
-  todoLabels?: string[]; // label IDs attached to this todo
+  todoLabels?: string[];
   onClose: () => void;
   onUpdated: () => void;
   isDemoMode?: boolean;
@@ -44,6 +51,9 @@ export const TaskDetailModal: React.FC<Props> = ({
   const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0]);
   const [allLabels, setAllLabels] = useState<Label[]>(groupLabels);
   const [submitting, setSubmitting] = useState(false);
+  const [startDate, setStartDate] = useState(todo.start_date || '');
+  const [dueDate, setDueDate] = useState(todo.due_date || '');
+  const [showLightbox, setShowLightbox] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -70,11 +80,9 @@ export const TaskDetailModal: React.FC<Props> = ({
       setComments([]);
     }
 
-    // Fetch labels for this group
     const { data: lbls } = await supabase.from('labels').select('*').eq('group_id', groupId);
     setAllLabels(lbls || []);
 
-    // Fetch todo's labels
     const { data: tl } = await supabase.from('todo_labels').select('label_id').eq('todo_id', todo.id);
     setTodoLabelIds((tl || []).map(x => x.label_id));
   }, [todo.id, groupId, isDemoMode]);
@@ -82,14 +90,25 @@ export const TaskDetailModal: React.FC<Props> = ({
   useEffect(() => { void fetchDetails(); }, [fetchDetails]);
 
   const handlePriorityChange = async (p: typeof priority) => {
+    haptic('medium');
     setPriority(p);
     if (!isDemoMode) {
       await supabase.from('todos').update({ priority: p }).eq('id', todo.id);
     }
   };
 
+  const handleDateChange = async (field: 'start_date' | 'due_date', value: string) => {
+    haptic();
+    if (field === 'start_date') setStartDate(value);
+    else setDueDate(value);
+    if (!isDemoMode) {
+      await supabase.from('todos').update({ [field]: value || null }).eq('id', todo.id);
+    }
+  };
+
   const handleAddCheckItem = async () => {
     if (!newCheckItem.trim()) return;
+    haptic();
     const item = { todo_id: todo.id, title: newCheckItem.trim(), position: checklist.length };
     setChecklist(prev => [...prev, { ...item, id: crypto.randomUUID(), is_completed: false, created_at: '' }]);
     setNewCheckItem('');
@@ -99,6 +118,7 @@ export const TaskDetailModal: React.FC<Props> = ({
   };
 
   const handleToggleCheck = async (itemId: string, current: boolean) => {
+    haptic('medium');
     setChecklist(prev => prev.map(c => c.id === itemId ? { ...c, is_completed: !current } : c));
     if (!isDemoMode) {
       await supabase.from('checklists').update({ is_completed: !current }).eq('id', itemId);
@@ -106,6 +126,7 @@ export const TaskDetailModal: React.FC<Props> = ({
   };
 
   const handleDeleteCheck = async (itemId: string) => {
+    haptic();
     setChecklist(prev => prev.filter(c => c.id !== itemId));
     if (!isDemoMode) {
       await supabase.from('checklists').delete().eq('id', itemId);
@@ -114,6 +135,7 @@ export const TaskDetailModal: React.FC<Props> = ({
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !currentUserId) return;
+    haptic();
     setSubmitting(true);
     const comment = { todo_id: todo.id, user_id: currentUserId, content: newComment.trim() };
     setComments(prev => [...prev, { ...comment, id: crypto.randomUUID(), created_at: new Date().toISOString() }]);
@@ -124,7 +146,16 @@ export const TaskDetailModal: React.FC<Props> = ({
     setSubmitting(false);
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    haptic('medium');
+    setComments(prev => prev.filter(c => c.id !== commentId));
+    if (!isDemoMode) {
+      await supabase.from('todo_comments').delete().eq('id', commentId);
+    }
+  };
+
   const handleToggleLabel = async (labelId: string) => {
+    haptic();
     const has = todoLabelIds.includes(labelId);
     if (has) {
       setTodoLabelIds(prev => prev.filter(id => id !== labelId));
@@ -137,6 +168,7 @@ export const TaskDetailModal: React.FC<Props> = ({
 
   const handleCreateLabel = async () => {
     if (!newLabelName.trim()) return;
+    haptic();
     const label = { group_id: groupId, name: newLabelName.trim(), color: newLabelColor };
     if (!isDemoMode) {
       const { data } = await supabase.from('labels').insert(label).select().single();
@@ -187,7 +219,7 @@ export const TaskDetailModal: React.FC<Props> = ({
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--color-border)" }}>
           <div className="min-w-0 flex-1 pr-3">
-            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: "var(--color-foreground)" }}>
+            <h2 className="text-[18px] font-bold tracking-tight" style={{ color: "var(--color-foreground)" }}>
               {todo.title}
             </h2>
             {todo.description && (
@@ -196,26 +228,80 @@ export const TaskDetailModal: React.FC<Props> = ({
               </p>
             )}
           </div>
-          <motion.button whileTap={{ scale: 0.88 }} onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          <motion.button whileTap={{ scale: 0.88 }} onClick={() => { haptic(); onClose(); }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
             style={{ background: "var(--color-canvas-alt)", color: "var(--color-muted)" }}
           >
-            <X size={16} strokeWidth={2.5} />
+            <X size={18} strokeWidth={2.5} />
           </motion.button>
         </div>
 
+        {/* Photo in detail view */}
+        {todo.photo_url && (
+          <div
+            className="px-5 pt-4 cursor-pointer"
+            onClick={() => setShowLightbox(true)}
+          >
+            <div className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--color-border)" }}>
+              <Image
+                src={todo.photo_url}
+                alt={todo.title}
+                width={600}
+                height={400}
+                className="w-full max-h-52 object-contain"
+                style={{ background: "var(--color-interactive-bg)" }}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="px-5 py-4 space-y-5" style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 1rem))' }}>
+
+          {/* Time Range */}
+          <section>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Clock size={14} style={{ color: "var(--color-muted)" }} />
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--color-subtle)" }}>
+                Zeitraum
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-[10px] font-semibold mb-1 block" style={{ color: "var(--color-subtle)" }}>Start</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => handleDateChange('start_date', e.target.value)}
+                  className="w-full rounded-xl px-3 py-2.5 text-[13px] focus:outline-none"
+                  style={{ background: "var(--color-canvas)", border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                />
+              </div>
+              <div className="flex items-end pb-1">
+                <Calendar size={14} style={{ color: "var(--color-subtle)" }} />
+              </div>
+              <div className="flex-1">
+                <label className="text-[10px] font-semibold mb-1 block" style={{ color: "var(--color-subtle)" }}>Fällig</label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => handleDateChange('due_date', e.target.value)}
+                  className="w-full rounded-xl px-3 py-2.5 text-[13px] focus:outline-none"
+                  style={{ background: "var(--color-canvas)", border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                />
+              </div>
+            </div>
+          </section>
 
           {/* Labels */}
           <section>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
-                <Tag size={13} style={{ color: "var(--color-muted)" }} />
+                <Tag size={14} style={{ color: "var(--color-muted)" }} />
                 <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--color-subtle)" }}>
                   Labels
                 </span>
               </div>
-              <button onClick={() => setShowLabelPicker(!showLabelPicker)}
+              <button onClick={() => { haptic(); setShowLabelPicker(!showLabelPicker); }}
                 className="text-[11px] font-semibold" style={{ color: "var(--color-brand)" }}
               >
                 {showLabelPicker ? 'Fertig' : 'Bearbeiten'}
@@ -240,7 +326,7 @@ export const TaskDetailModal: React.FC<Props> = ({
                 >
                   {allLabels.map(label => (
                     <button key={label.id} onClick={() => handleToggleLabel(label.id)}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 transition-all active:scale-[0.98]"
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 transition-all active:scale-[0.98]"
                       style={{ background: "var(--color-interactive-bg)", border: todoLabelIds.includes(label.id) ? `2px solid ${label.color}` : "2px solid transparent" }}
                     >
                       <div className="h-4 w-4 rounded-full" style={{ background: label.color }} />
@@ -251,7 +337,7 @@ export const TaskDetailModal: React.FC<Props> = ({
                   <div className="flex gap-2 items-center">
                     <div className="flex gap-1">
                       {LABEL_COLORS.map(c => (
-                        <button key={c} onClick={() => setNewLabelColor(c)}
+                        <button key={c} onClick={() => { haptic(); setNewLabelColor(c); }}
                           className="h-5 w-5 rounded-full transition-all"
                           style={{ background: c, border: newLabelColor === c ? '2px solid var(--color-foreground)' : '2px solid transparent' }}
                         />
@@ -266,7 +352,7 @@ export const TaskDetailModal: React.FC<Props> = ({
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateLabel())}
                     />
                     <button onClick={handleCreateLabel}
-                      className="flex items-center gap-1 rounded-xl px-3 py-2 text-[12px] font-bold text-white"
+                      className="flex items-center gap-1 rounded-xl px-3 py-2 text-[12px] font-bold text-white active:scale-95"
                       style={{ background: newLabelColor }}
                     >
                       <Plus size={12} /> Erstellen
@@ -280,7 +366,7 @@ export const TaskDetailModal: React.FC<Props> = ({
           {/* Priority */}
           <section>
             <div className="flex items-center gap-1.5 mb-2">
-              <AlertTriangle size={13} style={{ color: "var(--color-muted)" }} />
+              <AlertTriangle size={14} style={{ color: "var(--color-muted)" }} />
               <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--color-subtle)" }}>
                 Priorität
               </span>
@@ -292,14 +378,14 @@ export const TaskDetailModal: React.FC<Props> = ({
                 const active = priority === p;
                 return (
                   <button key={p} onClick={() => handlePriorityChange(p)}
-                    className="flex-1 flex items-center justify-center gap-1 rounded-xl py-2 text-[11px] font-bold transition-all active:scale-95"
+                    className="flex-1 flex items-center justify-center gap-1 rounded-xl py-2.5 text-[12px] font-bold transition-all active:scale-95"
                     style={{
                       background: active ? cfg.color + '18' : "var(--color-interactive-bg)",
                       border: active ? `1.5px solid ${cfg.color}` : "1.5px solid var(--color-border)",
                       color: active ? cfg.color : "var(--color-muted)",
                     }}
                   >
-                    <Icon size={12} />
+                    <Icon size={13} />
                     {cfg.label}
                   </button>
                 );
@@ -310,7 +396,7 @@ export const TaskDetailModal: React.FC<Props> = ({
           {/* Checklist */}
           <section>
             <div className="flex items-center gap-1.5 mb-2">
-              <CheckSquare size={13} style={{ color: "var(--color-muted)" }} />
+              <CheckSquare size={14} style={{ color: "var(--color-muted)" }} />
               <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--color-subtle)" }}>
                 Checkliste
               </span>
@@ -329,7 +415,7 @@ export const TaskDetailModal: React.FC<Props> = ({
               {checklist.map(item => (
                 <div key={item.id} className="flex items-center gap-2 group">
                   <button onClick={() => handleToggleCheck(item.id, item.is_completed)}
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-all"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-all active:scale-90"
                     style={{
                       border: item.is_completed ? "2px solid var(--color-brand)" : "2px solid var(--color-border-strong)",
                       background: item.is_completed ? "var(--color-brand)" : "transparent",
@@ -343,10 +429,10 @@ export const TaskDetailModal: React.FC<Props> = ({
                     {item.title}
                   </span>
                   <button onClick={() => handleDeleteCheck(item.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity p-1"
                     style={{ color: "var(--color-muted)" }}
                   >
-                    <Trash2 size={12} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               ))}
@@ -354,15 +440,15 @@ export const TaskDetailModal: React.FC<Props> = ({
             <div className="flex gap-2 mt-2">
               <input value={newCheckItem} onChange={e => setNewCheckItem(e.target.value)}
                 placeholder="Neuer Punkt…"
-                className="flex-1 rounded-xl px-3 py-2 text-[13px] focus:outline-none"
+                className="flex-1 rounded-xl px-3 py-2.5 text-[13px] focus:outline-none"
                 style={{ background: "var(--color-canvas)", border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
                 onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddCheckItem())}
               />
               <button onClick={handleAddCheckItem}
-                className="flex h-9 w-9 items-center justify-center rounded-xl"
+                className="flex h-10 w-10 items-center justify-center rounded-xl active:scale-90"
                 style={{ background: "var(--color-brand)", color: "white" }}
               >
-                <Plus size={14} />
+                <Plus size={16} />
               </button>
             </div>
           </section>
@@ -370,7 +456,7 @@ export const TaskDetailModal: React.FC<Props> = ({
           {/* Comments */}
           <section>
             <div className="flex items-center gap-1.5 mb-2">
-              <MessageCircle size={13} style={{ color: "var(--color-muted)" }} />
+              <MessageCircle size={14} style={{ color: "var(--color-muted)" }} />
               <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--color-subtle)" }}>
                 Kommentare
               </span>
@@ -380,16 +466,29 @@ export const TaskDetailModal: React.FC<Props> = ({
                 </span>
               )}
             </div>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
+            <div className="space-y-2 max-h-48 overflow-y-auto">
               {comments.map(c => {
                 const name = c.user_profile?.first_name || c.user_profile?.username || 'Unbekannt';
+                const isOwn = c.user_id === currentUserId;
                 return (
-                  <div key={c.id} className="rounded-xl px-3 py-2" style={{ background: "var(--color-interactive-bg)" }}>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-bold" style={{ color: "var(--color-foreground)" }}>{name}</span>
-                      <span className="text-[9px]" style={{ color: "var(--color-subtle)" }}>
-                        {c.created_at ? new Date(c.created_at).toLocaleString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
-                      </span>
+                  <div key={c.id} className="rounded-xl px-3 py-2.5 group relative" style={{ background: "var(--color-interactive-bg)" }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[12px] font-bold" style={{ color: "var(--color-foreground)" }}>{name}</span>
+                        <span className="text-[10px]" style={{ color: "var(--color-subtle)" }}>
+                          {c.created_at ? new Date(c.created_at).toLocaleString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                      </div>
+                      {isOwn && (
+                        <button
+                          onClick={() => handleDeleteComment(c.id)}
+                          className="opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity p-0.5 rounded"
+                          style={{ color: "#EF4444" }}
+                          title="Löschen"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
                     <p className="text-[13px] mt-0.5" style={{ color: "var(--color-foreground)" }}>{c.content}</p>
                   </div>
@@ -403,21 +502,60 @@ export const TaskDetailModal: React.FC<Props> = ({
               <div className="flex gap-2 mt-2">
                 <input value={newComment} onChange={e => setNewComment(e.target.value)}
                   placeholder="Kommentar schreiben…"
-                  className="flex-1 rounded-xl px-3 py-2 text-[13px] focus:outline-none"
+                  className="flex-1 rounded-xl px-3 py-2.5 text-[13px] focus:outline-none"
                   style={{ background: "var(--color-canvas)", border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
                   onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddComment())}
                 />
                 <button onClick={handleAddComment} disabled={submitting || !newComment.trim()}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl disabled:opacity-40"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl disabled:opacity-40 active:scale-90"
                   style={{ background: "var(--color-brand)", color: "white" }}
                 >
-                  {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                 </button>
               </div>
             )}
           </section>
         </div>
       </motion.div>
+
+      {/* Image lightbox */}
+      <AnimatePresence>
+        {showLightbox && todo.photo_url && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[80] bg-black/85"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLightbox(false)}
+              style={{ backdropFilter: "blur(8px)" }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              className="fixed inset-4 z-[80] flex items-center justify-center"
+              onClick={() => setShowLightbox(false)}
+            >
+              <button
+                onClick={() => setShowLightbox(false)}
+                className="absolute top-2 right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white"
+              >
+                <X size={20} />
+              </button>
+              <Image
+                src={todo.photo_url}
+                alt={todo.title}
+                width={1200}
+                height={900}
+                className="max-h-full max-w-full object-contain rounded-xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

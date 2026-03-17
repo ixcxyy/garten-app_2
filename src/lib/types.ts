@@ -33,6 +33,7 @@ export interface Todo {
   status: 'pending' | 'completed';
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   creator_id: string | null;
+  start_date: string | null;
   due_date: string | null;
   created_at: string;
   user_profile?: UserProfile;

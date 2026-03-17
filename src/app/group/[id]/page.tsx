@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3, Users, EyeOff, Eye } from 'lucide-react';
+import { Plus, ArrowLeft, Leaf, ListTodo, CheckCheck, Copy, Check, Settings, BarChart3, Users, EyeOff, Eye, LayoutGrid, List, ZoomIn, ZoomOut } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Todo, Group, Poll, TaskReaction, UserProfile, GroupMember, Label } from '@/lib/types';
 import { TodoCard } from '@/components/TodoCard';
@@ -25,6 +25,7 @@ const MOCK_TODOS: Todo[] = [
     title: 'Tomaten gießen',
     description: 'Jeden Morgen wässern, besonders bei Hitze.',
     photo_url: null,
+    start_date: null,
     due_date: null,
     status: 'pending',
     created_at: new Date().toISOString(),
@@ -36,6 +37,7 @@ const MOCK_TODOS: Todo[] = [
     title: 'Unkraut jäten',
     description: 'Im Kräuterbereich hat sich viel angesammelt.',
     photo_url: null,
+    start_date: null,
     due_date: null,
     status: 'completed',
     created_at: new Date().toISOString(),
@@ -47,6 +49,7 @@ const MOCK_TODOS: Todo[] = [
     title: 'Kompostdienst Freitag',
     description: null,
     photo_url: null,
+    start_date: null,
     due_date: '2026-03-21',
     status: 'pending',
     created_at: new Date().toISOString(),
@@ -87,6 +90,8 @@ function GroupPageContent() {
   const [detailTodo, setDetailTodo] = useState<Todo | null>(null);
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const [commentCountMap, setCommentCountMap] = useState<Record<string, number>>({});
+  const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
+  const [boardTransform, setBoardTransform] = useState({ x: 0, y: 0, scale: 1 });
 
   useEffect(() => {
     const saved = localStorage.getItem('hide_completed');
@@ -346,6 +351,12 @@ function GroupPageContent() {
     await supabase.from('task_reactions').insert({ todo_id: todoId, user_id: currentUserId, emoji });
   };
 
+  const handleDeleteTodo = async (todoId: string) => {
+    if (isDemoMode) return;
+    setTodos(prev => prev.filter(t => t.id !== todoId));
+    await supabase.from('todos').delete().eq('id', todoId);
+  };
+
   const handleUnreact = async (todoId: string, emoji: string) => {
     if (!currentUserId || isDemoMode) return;
     setReactionMap(prev => ({
@@ -436,6 +447,20 @@ function GroupPageContent() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
+            {/* View mode toggle */}
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => setViewMode(viewMode === 'list' ? 'board' : 'list')}
+              className="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
+              style={{
+                background: viewMode === 'board' ? "var(--color-brand-soft)" : "var(--color-interactive-bg)",
+                border: viewMode === 'board' ? "1px solid var(--color-brand)" : "1px solid var(--color-interactive-border)",
+                color: viewMode === 'board' ? "var(--color-brand)" : "var(--color-muted)",
+              }}
+              title={viewMode === 'list' ? 'Board-Ansicht' : 'Listen-Ansicht'}
+            >
+              {viewMode === 'list' ? <LayoutGrid size={16} strokeWidth={2} /> : <List size={16} strokeWidth={2} />}
+            </motion.button>
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={copyInviteLink}
@@ -734,6 +759,106 @@ function GroupPageContent() {
                 </AnimatePresence>
               </motion.div>
             )
+          ) : viewMode === 'board' && (activeTab === 'open' || activeTab === 'done') ? (
+            <motion.div
+              key={`board-${activeTab}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="relative"
+              style={{ height: 'calc(100vh - 260px)' }}
+            >
+              {/* Zoom controls */}
+              <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+                <button
+                  onClick={() => setBoardTransform(prev => ({ ...prev, scale: Math.min(prev.scale + 0.2, 2.5) }))}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg"
+                  style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", color: "var(--color-muted)" }}
+                >
+                  <ZoomIn size={14} />
+                </button>
+                <button
+                  onClick={() => setBoardTransform(prev => ({ ...prev, scale: Math.max(prev.scale - 0.2, 0.3) }))}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg"
+                  style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", color: "var(--color-muted)" }}
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <button
+                  onClick={() => setBoardTransform({ x: 0, y: 0, scale: 1 })}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[9px] font-bold"
+                  style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", color: "var(--color-muted)" }}
+                >
+                  1:1
+                </button>
+              </div>
+
+              {/* Canvas area */}
+              <div
+                className="w-full h-full overflow-hidden rounded-xl touch-none"
+                style={{ background: "var(--color-canvas-alt, var(--color-interactive-bg))", border: "1px solid var(--color-border)" }}
+                onPointerDown={(e) => {
+                  if ((e.target as HTMLElement).closest('[data-card]')) return;
+                  const startX = e.clientX - boardTransform.x;
+                  const startY = e.clientY - boardTransform.y;
+                  const onMove = (ev: PointerEvent) => {
+                    setBoardTransform(prev => ({ ...prev, x: ev.clientX - startX, y: ev.clientY - startY }));
+                  };
+                  const onUp = () => {
+                    window.removeEventListener('pointermove', onMove);
+                    window.removeEventListener('pointerup', onUp);
+                  };
+                  window.addEventListener('pointermove', onMove);
+                  window.addEventListener('pointerup', onUp);
+                }}
+                onWheel={(e) => {
+                  e.preventDefault();
+                  const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                  setBoardTransform(prev => ({
+                    ...prev,
+                    scale: Math.min(2.5, Math.max(0.3, prev.scale + delta)),
+                  }));
+                }}
+              >
+                <div
+                  style={{
+                    transform: `translate(${boardTransform.x}px, ${boardTransform.y}px) scale(${boardTransform.scale})`,
+                    transformOrigin: '0 0',
+                    transition: 'none',
+                  }}
+                  className="p-6"
+                >
+                  <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                    {displayedTodos.map(todo => (
+                      <div key={todo.id} data-card>
+                        <TodoCard
+                          todo={todo}
+                          onToggleComplete={toggleTodoComplete}
+                          currentUserId={currentUserId}
+                          assignees={assigneeMap[todo.id] || []}
+                          reactions={reactionMap[todo.id] || []}
+                          labels={todoLabelMap[todo.id] || []}
+                          checklistProgress={checklistMap[todo.id]}
+                          commentCount={commentCountMap[todo.id] || 0}
+                          isAssigned={myAssignments.has(todo.id)}
+                          onAssign={() => handleAssign(todo.id)}
+                          onUnassign={() => handleUnassign(todo.id)}
+                          onReact={(emoji) => handleReact(todo.id, emoji)}
+                          onUnreact={(emoji) => handleUnreact(todo.id, emoji)}
+                          onTitleClick={() => setDetailTodo(todo)}
+                          isDemoMode={isDemoMode}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {displayedTodos.length === 0 && (
+                    <div className="flex items-center justify-center h-40 text-[14px] font-medium" style={{ color: "var(--color-muted)" }}>
+                      Keine Aufgaben
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
           ) : displayedTodos.length === 0 ? (
             <motion.div
               key={`empty-${activeTab}`}
@@ -786,6 +911,7 @@ function GroupPageContent() {
                     onReact={(emoji) => handleReact(todo.id, emoji)}
                     onUnreact={(emoji) => handleUnreact(todo.id, emoji)}
                     onTitleClick={() => setDetailTodo(todo)}
+                    onDelete={() => handleDeleteTodo(todo.id)}
                     isDemoMode={isDemoMode}
                   />
                 ))}
