@@ -99,10 +99,36 @@ export const TaskDetailModal: React.FC<Props> = ({
 
   const handleDateChange = async (field: 'start_date' | 'due_date', value: string) => {
     haptic();
-    if (field === 'start_date') setStartDate(value);
-    else setDueDate(value);
+    let newStart = startDate;
+    let newDue = dueDate;
+
+    if (field === 'start_date') {
+      newStart = value;
+      // If start is after due, move due to match start
+      if (value && dueDate && value > dueDate) {
+        newDue = value;
+      }
+    } else {
+      newDue = value;
+      // If due is before start, move start to match due
+      if (value && startDate && value < startDate) {
+        newStart = value;
+      }
+    }
+
+    setStartDate(newStart);
+    setDueDate(newDue);
+
     if (!isDemoMode) {
-      await supabase.from('todos').update({ [field]: value || null }).eq('id', todo.id);
+      const updates: any = {};
+      if (field === 'start_date') {
+        updates.start_date = newStart || null;
+        if (newDue !== dueDate) updates.due_date = newDue || null;
+      } else {
+        updates.due_date = newDue || null;
+        if (newStart !== startDate) updates.start_date = newStart || null;
+      }
+      await supabase.from('todos').update(updates).eq('id', todo.id);
     }
   };
 
@@ -271,6 +297,7 @@ export const TaskDetailModal: React.FC<Props> = ({
                 <input
                   type="date"
                   value={startDate}
+                  max={dueDate || undefined}
                   onChange={(e) => handleDateChange('start_date', e.target.value)}
                   className="w-full rounded-xl px-3 py-2.5 text-[13px] focus:outline-none"
                   style={{ background: "var(--color-canvas)", border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
@@ -284,6 +311,7 @@ export const TaskDetailModal: React.FC<Props> = ({
                 <input
                   type="date"
                   value={dueDate}
+                  min={startDate || undefined}
                   onChange={(e) => handleDateChange('due_date', e.target.value)}
                   className="w-full rounded-xl px-3 py-2.5 text-[13px] focus:outline-none"
                   style={{ background: "var(--color-canvas)", border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}

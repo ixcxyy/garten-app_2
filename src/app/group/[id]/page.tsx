@@ -92,6 +92,7 @@ function GroupPageContent() {
   const [commentCountMap, setCommentCountMap] = useState<Record<string, number>>({});
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const [boardTransform, setBoardTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('hide_completed');
@@ -101,6 +102,15 @@ function GroupPageContent() {
   useEffect(() => {
     localStorage.setItem('hide_completed', hideCompleted.toString());
   }, [hideCompleted]);
+  
+  useEffect(() => {
+    if (viewMode === 'board') {
+      document.body.setAttribute('data-board-view', 'true');
+    } else {
+      document.body.removeAttribute('data-board-view');
+    }
+    return () => document.body.removeAttribute('data-board-view');
+  }, [viewMode]);
 
   useEffect(() => {
     if (isDemoMode) return;
@@ -407,8 +417,8 @@ function GroupPageContent() {
   const completionPct = dueTodos.length > 0 ? Math.round((doneDueTodos.length / dueTodos.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen pb-32 overflow-x-hidden" style={{ background: "var(--color-canvas)" }}>
-      {/* Header */}
+    <div className={`min-h-screen overflow-x-hidden ${viewMode === 'board' ? 'pb-0' : 'pb-32'}`} style={{ background: "var(--color-canvas)" }}>
+      {/* Header — hidden in board mode */}
       <header
         className="sticky top-0 z-30"
         style={{
@@ -416,6 +426,10 @@ function GroupPageContent() {
           backdropFilter: "blur(40px) saturate(180%)",
           WebkitBackdropFilter: "blur(40px) saturate(180%)",
           borderBottom: "1px solid var(--color-border)",
+          display: viewMode === 'board' ? 'none' : undefined,
+          visibility: viewMode === 'board' ? 'hidden' : 'visible',
+          height: viewMode === 'board' ? 0 : 'auto',
+          overflow: viewMode === 'board' ? 'hidden' : 'visible',
         }}
       >
         <div className="flex items-center justify-between px-4 py-3">
@@ -761,121 +775,6 @@ function GroupPageContent() {
                 </AnimatePresence>
               </motion.div>
             )
-          ) : viewMode === 'board' && (activeTab === 'open' || activeTab === 'done') ? (
-            <motion.div
-              key={`board-${activeTab}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="relative"
-              style={{ height: 'calc(100vh - 260px)' }}
-            >
-              {/* Canvas — drag to pan, pinch to zoom, scroll to zoom */}
-              <div
-                className="w-full h-full overflow-hidden rounded-xl"
-                style={{ background: "var(--color-canvas-alt, var(--color-interactive-bg))", border: "1px solid var(--color-border)", touchAction: 'none' }}
-                ref={(el) => {
-                  if (!el || (el as any).__pinchBound) return;
-                  (el as any).__pinchBound = true;
-                  let lastDist = 0;
-                  el.addEventListener('touchstart', (e) => {
-                    if (e.touches.length === 2) {
-                      const dx = e.touches[0].clientX - e.touches[1].clientX;
-                      const dy = e.touches[0].clientY - e.touches[1].clientY;
-                      lastDist = Math.hypot(dx, dy);
-                    }
-                  }, { passive: false });
-                  el.addEventListener('touchmove', (e) => {
-                    if (e.touches.length === 2) {
-                      e.preventDefault();
-                      const dx = e.touches[0].clientX - e.touches[1].clientX;
-                      const dy = e.touches[0].clientY - e.touches[1].clientY;
-                      const dist = Math.hypot(dx, dy);
-                      if (lastDist > 0) {
-                        const delta = (dist - lastDist) * 0.005;
-                        setBoardTransform(prev => ({
-                          ...prev,
-                          scale: Math.min(3, Math.max(0.3, prev.scale + delta)),
-                        }));
-                      }
-                      lastDist = dist;
-                    }
-                  }, { passive: false });
-                  el.addEventListener('touchend', () => { lastDist = 0; });
-                }}
-                onPointerDown={(e) => {
-                  if ((e.target as HTMLElement).closest('[data-card]')) return;
-                  const startX = e.clientX - boardTransform.x;
-                  const startY = e.clientY - boardTransform.y;
-                  const onMove = (ev: PointerEvent) => {
-                    setBoardTransform(prev => ({ ...prev, x: ev.clientX - startX, y: ev.clientY - startY }));
-                  };
-                  const onUp = () => {
-                    window.removeEventListener('pointermove', onMove);
-                    window.removeEventListener('pointerup', onUp);
-                  };
-                  window.addEventListener('pointermove', onMove);
-                  window.addEventListener('pointerup', onUp);
-                }}
-                onWheel={(e) => {
-                  const delta = e.deltaY > 0 ? -0.08 : 0.08;
-                  setBoardTransform(prev => ({
-                    ...prev,
-                    scale: Math.min(3, Math.max(0.3, prev.scale + delta)),
-                  }));
-                }}
-              >
-                <div
-                  style={{
-                    transform: `translate(${boardTransform.x}px, ${boardTransform.y}px) scale(${boardTransform.scale})`,
-                    transformOrigin: '0 0',
-                    willChange: 'transform',
-                  }}
-                  className="p-4"
-                >
-                  <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-                    {displayedTodos.map(todo => (
-                      <div key={todo.id} data-card>
-                        <TodoCard
-                          todo={todo}
-                          onToggleComplete={toggleTodoComplete}
-                          currentUserId={currentUserId}
-                          assignees={assigneeMap[todo.id] || []}
-                          reactions={reactionMap[todo.id] || []}
-                          labels={todoLabelMap[todo.id] || []}
-                          checklistProgress={checklistMap[todo.id]}
-                          commentCount={commentCountMap[todo.id] || 0}
-                          isAssigned={myAssignments.has(todo.id)}
-                          onAssign={() => handleAssign(todo.id)}
-                          onUnassign={() => handleUnassign(todo.id)}
-                          onReact={(emoji) => handleReact(todo.id, emoji)}
-                          onUnreact={(emoji) => handleUnreact(todo.id, emoji)}
-                          onTitleClick={() => setDetailTodo(todo)}
-                          onDelete={() => handleDeleteTodo(todo.id)}
-                          isDemoMode={isDemoMode}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {displayedTodos.length === 0 && (
-                    <div className="flex items-center justify-center h-40 text-[14px] font-medium" style={{ color: "var(--color-muted)" }}>
-                      Keine Aufgaben
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Minimal zoom indicator — only visible when zoomed */}
-              {boardTransform.scale !== 1 && (
-                <button
-                  onClick={() => setBoardTransform({ x: 0, y: 0, scale: 1 })}
-                  className="absolute bottom-3 right-3 rounded-full px-2.5 py-1 text-[10px] font-bold"
-                  style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", color: "var(--color-muted)", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
-                >
-                  {Math.round(boardTransform.scale * 100)}%
-                </button>
-              )}
-            </motion.div>
           ) : displayedTodos.length === 0 ? (
             <motion.div
               key={`empty-${activeTab}`}
@@ -937,6 +836,162 @@ function GroupPageContent() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Fullscreen board view */}
+      {viewMode === 'board' && (
+        <div className="fixed inset-0 z-40 flex flex-col" style={{ background: "var(--color-canvas)" }}>
+          {/* Floating Back Button */}
+          <button
+            onClick={() => { setViewMode('list'); setBoardTransform({ x: 0, y: 0, scale: 1 }); }}
+            className="fixed top-6 left-6 z-50 flex h-12 w-12 items-center justify-center rounded-full"
+            style={{ 
+              background: "var(--color-panel)", 
+              border: "1px solid var(--color-border)", 
+              color: "var(--color-foreground)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              backdropFilter: "blur(12px)"
+            }}
+          >
+            <List size={20} strokeWidth={2.5} />
+          </button>
+
+          {/* Canvas */}
+          <div
+            className="flex-1 overflow-hidden"
+            style={{ touchAction: 'none' }}
+            ref={(el) => {
+              if (!el || (el as any).__pinchBound) return;
+              (el as any).__pinchBound = true;
+              let lastDist = 0;
+              el.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                  const dx = e.touches[0].clientX - e.touches[1].clientX;
+                  const dy = e.touches[0].clientY - e.touches[1].clientY;
+                  lastDist = Math.hypot(dx, dy);
+                }
+              }, { passive: false });
+              el.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                  e.preventDefault();
+                  const dx = e.touches[0].clientX - e.touches[1].clientX;
+                  const dy = e.touches[0].clientY - e.touches[1].clientY;
+                  const dist = Math.hypot(dx, dy);
+                  if (lastDist > 0) {
+                    const ratio = dist / lastDist;
+                    setBoardTransform(prev => ({
+                      ...prev,
+                      scale: Math.min(3, Math.max(0.3, prev.scale * ratio)),
+                    }));
+                  }
+                  lastDist = dist;
+                }
+              }, { passive: false });
+              el.addEventListener('touchend', () => { lastDist = 0; });
+            }}
+            onPointerDown={(e) => {
+              if ((e.target as HTMLElement).closest('[data-card]')) return;
+              setIsDragging(true);
+              const startX = e.clientX - boardTransform.x;
+              const startY = e.clientY - boardTransform.y;
+              const onMove = (ev: PointerEvent) => {
+                setBoardTransform(prev => ({ ...prev, x: ev.clientX - startX, y: ev.clientY - startY }));
+              };
+              const onUp = () => {
+                setIsDragging(false);
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+              };
+              window.addEventListener('pointermove', onMove);
+              window.addEventListener('pointerup', onUp);
+            }}
+            onWheel={(e) => {
+              e.preventDefault();
+              const delta = -e.deltaY * 0.002;
+              setBoardTransform(prev => ({
+                ...prev,
+                scale: Math.min(3, Math.max(0.3, prev.scale * (1 + delta))),
+              }));
+            }}
+          >
+            <motion.div
+              animate={{ 
+                x: boardTransform.x, 
+                y: boardTransform.y, 
+                scale: boardTransform.scale 
+              }}
+              transition={isDragging ? { type: "tween", duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+              style={{
+                transformOrigin: '0 0',
+                willChange: 'transform',
+              }}
+              className="p-12"
+            >
+              <div className="flex gap-8 items-start min-h-screen">
+                {/* Open Column */}
+                <div className="w-[320px] shrink-0">
+                  <h3 className="mb-4 text-[13px] font-bold uppercase tracking-[0.15em] px-2 flex items-center gap-2" style={{ color: "var(--color-brand)" }}>
+                    <div className="h-2 w-2 rounded-full" style={{ background: "var(--color-brand)" }} />
+                    Offen ({openTodos.length})
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    {openTodos.map(todo => (
+                      <div key={todo.id} data-card>
+                        <TodoCard {...{ todo, onToggleComplete: toggleTodoComplete, currentUserId, assignees: assigneeMap[todo.id] || [], reactions: reactionMap[todo.id] || [], labels: todoLabelMap[todo.id] || [], checklistProgress: checklistMap[todo.id], commentCount: commentCountMap[todo.id] || 0, isAssigned: myAssignments.has(todo.id), onAssign: () => handleAssign(todo.id), onUnassign: () => handleUnassign(todo.id), onReact: (emo) => handleReact(todo.id, emo), onUnreact: (emo) => handleUnreact(todo.id, emo), onTitleClick: () => setDetailTodo(todo), onDelete: () => handleDeleteTodo(todo.id), isDemoMode }} />
+                      </div>
+                    ))}
+                    {openTodos.length === 0 && (
+                      <div className="flex items-center justify-center h-32 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-sm" style={{ color: "var(--color-muted)" }}>
+                        Keine Aufgaben
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Done Column */}
+                <div className="w-[320px] shrink-0">
+                  <h3 className="mb-4 text-[13px] font-bold uppercase tracking-[0.15em] px-2 flex items-center gap-2" style={{ color: "var(--color-muted)" }}>
+                    <div className="h-2 w-2 rounded-full" style={{ background: "var(--color-border-strong)" }} />
+                    Erledigt ({doneTodos.length})
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    {doneTodos.map(todo => (
+                      <div key={todo.id} data-card>
+                        <TodoCard {...{ todo, onToggleComplete: toggleTodoComplete, currentUserId, assignees: assigneeMap[todo.id] || [], reactions: reactionMap[todo.id] || [], labels: todoLabelMap[todo.id] || [], checklistProgress: checklistMap[todo.id], commentCount: commentCountMap[todo.id] || 0, isAssigned: myAssignments.has(todo.id), onAssign: () => handleAssign(todo.id), onUnassign: () => handleUnassign(todo.id), onReact: (emo) => handleReact(todo.id, emo), onUnreact: (emo) => handleUnreact(todo.id, emo), onTitleClick: () => setDetailTodo(todo), onDelete: () => handleDeleteTodo(todo.id), isDemoMode }} />
+                      </div>
+                    ))}
+                    {doneTodos.length === 0 && (
+                      <div className="flex items-center justify-center h-32 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-sm" style={{ color: "var(--color-muted)" }}>
+                        Nichts erledigt
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Zoom indicator */}
+          {boardTransform.scale !== 1 && (
+            <button
+              onClick={() => setBoardTransform({ x: 0, y: 0, scale: 1 })}
+              className="fixed bottom-24 left-4 z-50 rounded-full px-3 py-1.5 text-[11px] font-bold"
+              style={{ background: "var(--color-panel)", border: "1px solid var(--color-border)", color: "var(--color-muted)", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+            >
+              {Math.round(boardTransform.scale * 100)}%
+            </button>
+          )}
+
+          {/* Board FAB */}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsModalOpen(true)}
+            className="fixed bottom-8 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full"
+            style={{ background: "var(--color-fab-bg)", color: "var(--color-fab-fg)", boxShadow: "var(--shadow-brand-lg)" }}
+          >
+            <Plus size={24} strokeWidth={2.5} />
+          </motion.button>
+        </div>
+      )}
 
       {/* FAB with menu */}
       <AnimatePresence>

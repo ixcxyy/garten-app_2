@@ -19,7 +19,8 @@ export default function MobileNav() {
   React.useEffect(() => {
     const checkModal = () => {
       const isModalOpen = document.body.style.overflow === 'hidden' || 
-                         !!document.querySelector('[data-modal-open="true"]');
+                         !!document.querySelector('[data-modal-open="true"]') ||
+                         document.body.getAttribute('data-board-view') === 'true';
       setIsHidden(isModalOpen);
     };
 
@@ -29,7 +30,7 @@ export default function MobileNav() {
     const observer = new MutationObserver(checkModal);
     observer.observe(document.body, { 
       attributes: true, 
-      attributeFilter: ['style'],
+      attributeFilter: ['style', 'data-board-view'],
       childList: true,
       subtree: true
     });

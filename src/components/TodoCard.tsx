@@ -340,54 +340,54 @@ export const TodoCard = ({
         <div className="mt-2.5 ml-[34px] flex flex-wrap items-center gap-1.5">
           {/* Priority chip */}
           <div
-            className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-[2px] text-[11px] font-semibold leading-none min-h-[20px]"
             style={{ background: priCfg.bg, color: priCfg.color, border: `1px solid ${priCfg.color}25` }}
           >
-            <PriIcon size={12} />
-            {priCfg.label}
+            <PriIcon size={11} className="shrink-0" />
+            <span className="translate-y-[0.5px]">{priCfg.label}</span>
           </div>
 
           {/* Labels */}
           {labels.map(l => (
-            <span key={l.id} className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold text-white" style={{ background: l.color }}>
-              {l.name}
+            <span key={l.id} className="inline-flex items-center rounded-md px-2 py-[2px] text-[11px] font-semibold leading-none text-white min-h-[20px]" style={{ background: l.color }}>
+              <span className="translate-y-[0.5px]">{l.name}</span>
             </span>
           ))}
 
           {/* Date range */}
           {(todo.start_date || todo.due_date) && (
             <div
-              className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-[2px] text-[11px] font-semibold leading-none min-h-[20px]"
               style={{ background: "var(--color-brand-soft)", color: "var(--color-brand)" }}
             >
-              <Calendar size={11} />
-              {formatDateRange()}
+              <Calendar size={10} className="shrink-0" />
+              <span className="translate-y-[0.5px]">{formatDateRange()}</span>
             </div>
           )}
 
           {/* Checklist progress */}
           {checklistProgress && checklistProgress.total > 0 && (
             <div
-              className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-[3px] text-[11px] font-semibold leading-none"
               style={{
                 background: checklistProgress.done === checklistProgress.total ? "var(--color-brand-soft)" : "var(--color-interactive-bg)",
                 color: checklistProgress.done === checklistProgress.total ? "var(--color-brand)" : "var(--color-muted)",
                 border: "1px solid var(--color-border)",
               }}
             >
-              <CheckSquare size={11} />
-              {checklistProgress.done}/{checklistProgress.total}
+              <CheckSquare size={10} className="shrink-0" />
+              <span className="translate-y-[0.5px]">{checklistProgress.done}/{checklistProgress.total}</span>
             </div>
           )}
 
           {/* Comment count — clickable to open detail */}
           <button
             onClick={() => { haptic(); onTitleClick?.(); }}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-[3px] text-[11px] font-semibold leading-none transition-all active:scale-95 cursor-pointer"
             style={{ background: "var(--color-interactive-bg)", color: "var(--color-muted)", border: "1px solid var(--color-border)" }}
           >
-            <MessageCircle size={11} />
-            {commentCount > 0 ? commentCount : '+'}
+            <MessageCircle size={10} className="shrink-0" />
+            <span className="translate-y-[0.5px]">{commentCount > 0 ? commentCount : '+'}</span>
           </button>
 
           {/* Assignees */}
