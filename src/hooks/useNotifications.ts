@@ -134,16 +134,18 @@ export function useNotifications(
     }
   }, [currentUserId]);
 
-  // Subscribe to realtime todos
+  // Always try to sync push subscription when permission is granted and user is logged in
+  useEffect(() => {
+    if (typeof window !== 'undefined' && currentUserId && Notification.permission === 'granted') {
+      void subscribeToPush();
+    }
+  }, [currentUserId, subscribeToPush]);
+
+  // Subscribe to realtime todos (foreground notifications)
   useEffect(() => {
     if (typeof window === 'undefined' || !currentUserId || !options.autoSubscribe) return;
 
     let channel: ReturnType<typeof supabase.channel> | null = null;
-
-    // Always try to subscribe to push when permission is granted
-    if (Notification.permission === 'granted') {
-      void subscribeToPush();
-    }
 
     const subscribe = async () => {
       const hasPermission = Notification.permission === 'granted';
